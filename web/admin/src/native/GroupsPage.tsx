@@ -15,9 +15,11 @@ import { PageHeader } from '../components/ui/PageHeader'
 import type { Column } from '../components/ui/DataTable'
 import { FilterBar } from '../components/ui/FilterBar'
 import { FacetedFilter } from '../components/ui/FacetedFilter'
+import { useAdminConfirmation } from './useAdminConfirmation'
 
 type Group = CoreOutput<'network.groups.list'>[number]
 export function GroupsPage() {
+  const confirm = useAdminConfirmation(() => !denied)
   useLocale()
   const formId = useId()
   const state = useSyncExternalStore(workflowActions.subscribe, workflowActions.snapshot)
@@ -36,8 +38,8 @@ export function GroupsPage() {
   useDirtyDraft(editing && !denied && !state.pending && draftGeneration === generation && name !== originalName)
   useEffect(() => { setEditing(false); setId(''); setName(''); setOriginalName('') }, [generation])
   useEffect(() => { if (denied) { setId(''); setName(''); setOriginalName(''); setEditing(false); setSearch(''); setAssociations([]) } }, [denied])
-  function closeEditor() {
-    if (state.busy || (!state.pending && name !== originalName && !window.confirm(t("分组名称尚未保存，确定放弃修改？")))) return
+  async function closeEditor() {
+    if (state.busy || (!state.pending && name !== originalName && !(await confirm(t("分组名称尚未保存，确定放弃修改？"))))) return
     setEditing(false); setId(''); setName(''); setOriginalName(''); setError('')
   }
   function edit(row?: Group) { setDraftGeneration(generation); setId(row?.id ?? ''); setName(row?.name ?? ''); setOriginalName(row?.name ?? ''); setEditing(true); setError('') }
@@ -62,7 +64,7 @@ export function GroupsPage() {
     await perform(() => workflowActions.run('network.groups.save', { ...(id ? { id } : {}), name: name.trim() }))
   }
   async function remove(row: Group) {
-    if (locked || !window.confirm(t("确定删除分组 {name}？有关联资源时服务端会拒绝删除。", { name: row.name }))) return
+    if (locked || !(await confirm(t("确定删除分组 {name}？有关联资源时服务端会拒绝删除。", { name: row.name })))) return
     await perform(() => workflowActions.run('network.groups.delete', { group_id: row.id }))
   }
   async function recover() {
@@ -98,7 +100,7 @@ export function GroupsPage() {
         <FacetedFilter label={t("资源关联")} value={associations} onChange={setAssociations} disabled={denied || list.isError} options={associationOptions.map(option => ({ ...option, count: allRows.filter(option.test).length }))} />
       </FilterBar>
     </ReadList>
-    <Modal open={editing && !denied} title={id ? t("编辑分组") : t("新增分组")} subtitle={t("名称最长 255 个字符，原有资源关联继续保留。")} className="network-reference-page network-editor-modal admin-form-dialog" onClose={closeEditor}
+    <Modal size="compact" open={editing && !denied} title={id ? t("编辑分组") : t("新增分组")} subtitle={t("名称最长 255 个字符，原有资源关联继续保留。")} className="network-reference-page network-editor-modal admin-form-dialog" onClose={closeEditor}
       footer={<><button className="button" type="button" disabled={state.busy} onClick={closeEditor}>{t("取消")}</button><button className="button primary" type="submit" form={formId} disabled={locked || !name.trim()}><Layers size={15} aria-hidden="true" />{t("保存分组")}</button></>}>
       <div className="network-editor-body"><p className="network-editor-note">{t("权限分组用于关联用户、套餐与可访问的节点。删除前请先解除资源关联。")}</p>{error || operationError ? <p role="alert">{error ? t(error) : managementError(operationError)}</p> : null}
       {pending ? <div role="status"><p>{t("保存结果等待确认；将复用原名称和原请求编号。")}</p><button type="button" className="button" disabled={state.busy || denied || list.isFetching || list.isError} onClick={() => void recover()}>{t("确认原分组操作")}</button></div> : null}

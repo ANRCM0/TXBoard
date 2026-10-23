@@ -8,8 +8,10 @@ import { Field, Input } from '../components/ui/Field'
 import { managementError } from './Feedback'
 import { workflowActions } from './session'
 import './list-rule-filter.css'
+import { useAdminConfirmation } from './useAdminConfirmation'
 
 function useDraftGuard(dirty: boolean, navigationActive: boolean) {
+  const confirm = useAdminConfirmation()
   useDirtyDraft(dirty && navigationActive)
   useEffect(() => {
     if (!dirty) return
@@ -17,7 +19,7 @@ function useDraftGuard(dirty: boolean, navigationActive: boolean) {
     window.addEventListener('beforeunload', guard)
     return () => window.removeEventListener('beforeunload', guard)
   }, [dirty])
-  return () => !dirty || window.confirm(t("关闭会丢弃尚未提交的账户资料，确认关闭？"))
+  return async () => !dirty || (await confirm(t("关闭会丢弃尚未提交的账户资料，确认关闭？")))
 }
 const emailValid = (email: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()) && email.trim().length <= 254
 
@@ -31,7 +33,7 @@ export function BatchAccountDialog({ locked, onClose, onCreated }: { locked: boo
   useEffect(() => { mounted.current = true; return () => { mounted.current = false } }, [])
   useEffect(() => { draftGeneration.current = generation; setRows([{ email: '', password: '' }]); setError(''); setResult(undefined) }, [generation])
   const canClose = useDraftGuard(rows.some(row => !!row.email || !!row.password), !locked && !state.pending && !result && draftGeneration.current === generation)
-  function close() { if (!state.busy && canClose()) onClose() }
+  async function close() { if (!state.busy && await canClose()) onClose() }
   async function submit(event: FormEvent) {
     event.preventDefault(); if (locked || state.busy || state.pending) return
     const accounts = rows.map(row => ({ email: row.email.trim().toLowerCase(), password: row.password }))
@@ -71,7 +73,7 @@ export function AccountProfileEditor({ user, locked, onClose, onChanged }: { use
   useEffect(() => { draftScope.current = user.id + ':' + user.identity_revision + ':' + generation; setPassword(''); setEmail(user.email); setError('') }, [generation, user.id, user.identity_revision, user.email])
   const canClose = useDraftGuard(email !== user.email || !!password, !locked && !state.pending && !!user.identity_editable && !!user.identity_revision
     && draftScope.current === user.id + ':' + user.identity_revision + ':' + generation)
-  function close() { if (!state.busy && canClose()) onClose() }
+  async function close() { if (!state.busy && await canClose()) onClose() }
   async function submit(event: FormEvent) {
     event.preventDefault()
     if (locked || state.busy || state.pending || !user.identity_revision || !user.identity_editable) return
@@ -96,7 +98,7 @@ export function AccountProfileEditor({ user, locked, onClose, onChanged }: { use
     <form id={formId} className="native-content-form" onSubmit={submit}>
       <Field label={t("登录邮箱")} required><Input type="email" value={email} maxLength={254} disabled={locked || state.busy} onChange={event => setEmail(event.target.value)} /></Field>
       <Field label={t("新登录密码")} hint={t("留空保留原密码；不会修改订阅、余额或代理凭据")}><Input type="password" value={password} maxLength={255} minLength={8} autoComplete="new-password" disabled={locked || state.busy} onChange={event => setPassword(event.target.value)} /></Field>
-      {error ? <><p role="alert">{t(error)}</p><button type="button" className="button" disabled={state.busy} onClick={() => { if (canClose()) onChanged() }}>{t("重新读取资料")}</button></> : null}
+      {error ? <><p role="alert">{t(error)}</p><button type="button" className="button" disabled={state.busy} onClick={async () => { if (await canClose()) onChanged() }}>{t("重新读取资料")}</button></> : null}
     </form>
   </Modal>
 }

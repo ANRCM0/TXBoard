@@ -12,6 +12,7 @@ import { NetworkRecovery, useNetworkManagement } from './NetworkManagement'
 import { ReadFields } from './ReadList'
 import { unixDate } from './readPresentation'
 import { AmendmentPlanSelector } from './AmendmentPlanSelector'
+import { useAdminConfirmation } from './useAdminConfirmation'
 
 type Amendment = NonNullable<CoreOutput<'subscription.admin.amendment.get'>['amendment']>
 type Changes = CoreInput<'subscription.admin.amendment.apply'>['changes']
@@ -45,6 +46,7 @@ export function amendmentChanges(base: Amendment, draft: Draft): Changes {
 }
 
 export function SubscriptionAmendmentPanel({ userId, locked, onChanged }: { userId: string; locked: boolean; onChanged: () => void }) {
+  const confirm = useAdminConfirmation(() => !locked && !management.denied, userId)
   useLocale()
   const snapshot = useQuery({ queryKey: ['native-admin', 'subscription-amendment', userId],
     queryFn: ({ signal }) => admin.read('subscription.admin.amendment.get', { user_id: userId }, signal) })
@@ -68,14 +70,14 @@ export function SubscriptionAmendmentPanel({ userId, locked, onChanged }: { user
     const guard = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = '' }
     window.addEventListener('beforeunload', guard); return () => window.removeEventListener('beforeunload', guard)
   }, [dirty])
-  function close() { if (!busy && (!dirty || window.confirm(t("关闭会丢弃尚未提交的订阅条款，确认关闭？")))) setEditing(undefined) }
+  async function close() { if (!busy && (!dirty || (await confirm(t("关闭会丢弃尚未提交的订阅条款，确认关闭？"))))) setEditing(undefined) }
   function update(field: 'quota' | 'speed' | 'devices' | 'expiry' | 'reason', value: string) { setEditing(old => old ? { ...old, draft: { ...old.draft, [field]: value } } : old) }
   async function submit(event: FormEvent) {
     event.preventDefault(); if (!editing || blocked) return
     setError('')
     try {
       const changes = amendmentChanges(editing.base, editing.draft)
-      if (changes.plan_revision && !window.confirm(t('确认立即变更管理员订阅权益套餐？不会创建付款、退款或修改原订单；到期时间仅在本次显式修改时变化。'))) return
+      if (changes.plan_revision && !(await confirm(t('确认立即变更管理员订阅权益套餐？不会创建付款、退款或修改原订单；到期时间仅在本次显式修改时变化。')))) return
       await workflowActions.run('subscription.admin.amendment.apply', { user_id: userId, subscription_id: editing.base.subscription_id,
         expected_subscription_version: editing.base.subscription_version, expected_terms_id: editing.base.terms_id,
         expected_period_version: editing.base.period_version, changes, reason: editing.draft.reason })
@@ -121,7 +123,7 @@ export function SubscriptionAmendmentPanel({ userId, locked, onChanged }: { user
         <Field label={t("限速（Mbps）")} hint={t("留空使用原生未限定值；0 保留其原生含义")}><Input inputMode="numeric" value={editing.draft.speed} disabled={blocked} onChange={event => update('speed', event.target.value)} /></Field>
         <Field label={t("设备数")} hint={t("留空使用原生未限定值")}><Input inputMode="numeric" value={editing.draft.devices} disabled={blocked} onChange={event => update('devices', event.target.value)} /></Field>
         <Field label={t("调整原因编号")} required hint={t("例如 support_case_482；将保留在调整记录中")}><Input value={editing.draft.reason} maxLength={64} disabled={blocked} onChange={event => update('reason', event.target.value)} /></Field>
-        {error ? <><p role="alert">{t(error)}</p><button type="button" className="button" disabled={busy} onClick={() => { if (!dirty || window.confirm(t("重新读取会丢弃当前条款草稿，确认继续？"))) { setEditing(undefined); void management.refresh() } }}>{t("重新读取当前条款")}</button></> : null}
+        {error ? <><p role="alert">{t(error)}</p><button type="button" className="button" disabled={busy} onClick={async () => { if (!dirty || (await confirm(t("重新读取会丢弃当前条款草稿，确认继续？")))) { setEditing(undefined); void management.refresh() } }}>{t("重新读取当前条款")}</button></> : null}
         <div className="network-form-actions"><button className="button primary" disabled={blocked}>{t("保存订阅条款")}</button><button type="button" className="button" disabled={busy} onClick={close}>{t("取消")}</button></div>
       </form>
     </Modal> : null}

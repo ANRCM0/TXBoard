@@ -51,15 +51,15 @@ async function settle() { await act(async () => { await new Promise(resolve => s
 async function render(show = true) {
   await act(async () => root.render(<QueryClientProvider client={client}>{show ? <CatalogPage /> : null}<ConfirmDialogHost /></QueryClientProvider>)); await settle()
 }
-function button(text: string, scope: ParentNode = host) { return [...scope.querySelectorAll<HTMLButtonElement>('button')].find(node => node.getAttribute('aria-label') === text || node.textContent?.trim() === text)! }
-async function click(text: string, scope: ParentNode = host) { await act(async () => button(text, scope).click()); await settle() }
-function field(id: string) { return host.querySelector<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>('#' + id)! }
+function button(text: string, scope: ParentNode = document) { return [...scope.querySelectorAll<HTMLButtonElement>('button')].find(node => node.getAttribute('aria-label') === text || node.textContent?.trim() === text)! }
+async function click(text: string, scope: ParentNode = document) { await act(async () => button(text, scope).click()); await settle() }
+function field(id: string) { return document.querySelector<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>('#' + id)! }
 async function change(id: string, value: string) {
   const node = field(id), prototype = node.tagName === 'SELECT' ? HTMLSelectElement.prototype : node.tagName === 'TEXTAREA' ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype
   await act(async () => { Object.getOwnPropertyDescriptor(prototype, 'value')!.set!.call(node, value); node.dispatchEvent(new Event(node.tagName === 'SELECT' ? 'change' : 'input', { bubbles: true })) }); await settle()
 }
 async function submit(label = '发布完整套餐条款') {
-  const form = host.querySelector<HTMLFormElement>('form[aria-label="' + label + '"]')!
+  const form = document.querySelector<HTMLFormElement>('form[aria-label="' + label + '"]')!
   await act(async () => form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))); await settle()
 }
 async function existing() { await render(); await click('编辑当前套餐') }
@@ -83,14 +83,14 @@ it('loads authoritative full current terms instead of reconstructing a plan from
   expect(admin.read).toHaveBeenCalledWith('catalog.admin-plans.get', { plan_id: planId })
   expect(field('catalog-name').value).toBe('Complete authoritative plan')
   expect(field('catalog-content').value).toBe('<b>Plain terms</b>')
-  expect(host.querySelector('[aria-label="已选套餐权限组"]')?.textContent).toContain('Authoritative group · #' + groupId)
+  expect(document.querySelector('[aria-label="已选套餐权限组"]')?.textContent).toContain('Authoritative group · #' + groupId)
   expect(field('catalog-speed').value).toBe('0')
   expect(field('catalog-devices').value).toBe('')
   expect(field('catalog-price-monthly').value).toBe('9007199254740993')
   expect(field('catalog-price-quarterly').value).toBe('0')
   expect(field('catalog-capacity-choice').value).toBe('')
   expect(button('发布完整条款').disabled).toBe(true)
-  expect(host.querySelectorAll('b').length).toBe(0)
+  expect(document.querySelectorAll('b').length).toBe(0)
 })
 
 it('publishes a complete observed revision with exact minor strings, all periods and preserved null/zero limits', async () => {
@@ -101,7 +101,7 @@ it('publishes a complete observed revision with exact minor strings, all periods
     speed_limit_mbps: 0, device_limit: null, capacity_limit: null, reset_method: 4, currency: 'USD',
     prices_minor: original.revision.terms.prices_minor,
   }, expect.any(String))
-  expect(host.querySelector('[aria-label="套餐发布编辑器"]')).toBeNull()
+  expect(document.querySelector('[aria-label="套餐发布编辑器"]')).toBeNull()
 })
 
 it('creates a separate new publication with no inherited Plan ID or CAS token', async () => {
@@ -119,7 +119,7 @@ it('clears an uncommitted tag draft when opening a different publication editor'
   expect(field('catalog-tags').value).toBe('uncommitted previous plan tag')
   await click('创建套餐')
   expect(field('catalog-tags').value).toBe('')
-  expect(host.querySelectorAll('.ui-tag-input-item')).toHaveLength(0)
+  expect(document.querySelectorAll('.ui-tag-input-item')).toHaveLength(0)
 })
 
 it('keeps the submitted draft and CAS revision after conflict until an explicit authoritative replacement', async () => {
@@ -128,8 +128,8 @@ it('keeps the submitted draft and CAS revision after conflict until an explicit 
   vi.mocked(admin.write).mockRejectedValueOnce(new CoreAdminApiError('NATIVE_PLAN_REVISION_CONFLICT', 409))
   await submit()
   expect(field('catalog-name').value).toBe('Operator draft')
-  expect(host.querySelector('[aria-label="套餐发布编辑器"]')!.textContent).toContain('11')
-  expect(host.textContent).toContain('草稿仍保留')
+  expect(document.querySelector('[aria-label="套餐发布编辑器"]')!.textContent).toContain('11')
+  expect(document.body.textContent).toContain('草稿仍保留')
   expect(button('发布完整条款').disabled).toBe(true)
   await submit(); expect(admin.write).toHaveBeenCalledTimes(1)
   await click('重新读取当前条款并替换草稿')
@@ -146,7 +146,7 @@ it('recovers the identical original publication and key after navigation without
   const originalCall = vi.mocked(admin.write).mock.calls[0]
   expect(workflowActions.snapshot().pending?.unknown).toBe(true)
   await render(false); await render()
-  expect(host.querySelector('[aria-label="套餐发布编辑器"]')).toBeNull()
+  expect(document.querySelector('[aria-label="套餐发布编辑器"]')).toBeNull()
   await click('使用原操作确认结果')
   expect(vi.mocked(admin.write).mock.calls[1]).toEqual(originalCall)
   expect(workflowActions.snapshot().pending).toBeUndefined()
@@ -171,7 +171,7 @@ it('uses the observed current Offer version and never enables changes to superse
 
 it('server-filters current versus superseded Offers and preserves decimal Plan IDs across pagination', async () => {
   await render()
-  const filters = host.querySelector<HTMLElement>('section[aria-label="周期商品"]')!
+  const filters = document.querySelector<HTMLElement>('section[aria-label="周期商品"]')!
   const select = filters.querySelector<HTMLSelectElement>('select')!
   await act(async () => { Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value')!.set!.call(select, 'superseded'); select.dispatchEvent(new Event('change', { bubbles: true })) }); await settle()
   const input = filters.querySelector<HTMLInputElement>('input')!
@@ -198,16 +198,16 @@ it('keeps a conflicted Offer draft locked until its own authoritative revision i
 it('reads historical full terms as read-only evidence and still opens the current revision for editing', async () => {
   await render(); await click('查看完整条款'); await click('查看此修订')
   expect(admin.read).toHaveBeenCalledWith('catalog.admin-plans.get', { plan_id: planId, revision_id: '10' }, expect.any(AbortSignal))
-  expect(host.textContent).toContain('Historical immutable plan')
-  const versionDetails = [...host.querySelectorAll('details')].find(node => node.querySelector('summary')?.textContent === '查看完整条款与版本标识')!
+  expect(document.body.textContent).toContain('Historical immutable plan')
+  const versionDetails = [...document.querySelectorAll('details')].find(node => node.querySelector('summary')?.textContent === '查看完整条款与版本标识')!
   expect(versionDetails.open).toBe(false)
   await act(async () => versionDetails.querySelector('summary')!.click())
   expect(versionDetails.open).toBe(true)
   expect(versionDetails.textContent).toContain(original.revision.content_hash)
-  expect(host.querySelector('[aria-label="套餐发布编辑器"]')).toBeNull()
+  expect(document.querySelector('[aria-label="套餐发布编辑器"]')).toBeNull()
   await click('基于当前完整条款编辑')
   expect(field('catalog-name').value).toBe('Complete authoritative plan')
-  expect(host.querySelector('[aria-label="套餐发布编辑器"]')!.textContent).toContain('11')
+  expect(document.querySelector('[aria-label="套餐发布编辑器"]')!.textContent).toContain('11')
 })
 
 it('preserves an unsupported historical currency until the operator explicitly chooses a supported publication currency', async () => {
@@ -226,10 +226,10 @@ it('withdraws stale terms, drafts and pagination on permission loss and requires
   vi.mocked(admin.write).mockRejectedValueOnce(new CoreAdminApiError('FORBIDDEN', 403, undefined, true))
   await submit()
   const originalCall = vi.mocked(admin.write).mock.calls[0]
-  expect(host.querySelector('table')).toBeNull()
-  expect(host.querySelector('[aria-label="套餐发布编辑器"]')).toBeNull()
-  expect(host.textContent).not.toContain('Partial Offer projection')
-  expect(host.textContent).not.toContain('共 21 项')
+  expect(document.querySelector('table')).toBeNull()
+  expect(document.querySelector('[aria-label="套餐发布编辑器"]')).toBeNull()
+  expect(document.body.textContent).not.toContain('Partial Offer projection')
+  expect(document.body.textContent).not.toContain('共 21 项')
   expect(button('使用原操作确认结果').disabled).toBe(true)
   vi.mocked(admin.read).mockRejectedValueOnce(new CoreAdminApiError('FORBIDDEN', 403))
   await click('刷新'); expect(button('使用原操作确认结果').disabled).toBe(true)
@@ -245,7 +245,7 @@ it('ignores a completed authoritative editor read after the administrator sessio
   await click('编辑当前套餐')
   act(() => workflowActions.reset())
   await act(async () => complete({ data: original, meta: {} } as never)); await settle()
-  expect(host.querySelector('[aria-label="套餐发布编辑器"]')).toBeNull()
+  expect(document.querySelector('[aria-label="套餐发布编辑器"]')).toBeNull()
   expect(admin.write).not.toHaveBeenCalled()
 })
 
@@ -253,14 +253,14 @@ it('hides cached catalog rows when a direct editor read is forbidden and recheck
   await render()
   vi.mocked(admin.read).mockRejectedValueOnce(new CoreAdminApiError('FORBIDDEN', 403))
   await click('编辑当前套餐')
-  expect(host.querySelector('table')).toBeNull()
-  expect(host.querySelector('[aria-label="套餐发布编辑器"]')).toBeNull()
-  expect(host.textContent).not.toContain('Partial Offer projection')
+  expect(document.querySelector('table')).toBeNull()
+  expect(document.querySelector('[aria-label="套餐发布编辑器"]')).toBeNull()
+  expect(document.body.textContent).not.toContain('Partial Offer projection')
   vi.mocked(admin.read).mockRejectedValueOnce(new CoreAdminApiError('FORBIDDEN', 403))
   await click('刷新')
-  expect(host.querySelector('table')).toBeNull()
+  expect(document.querySelector('table')).toBeNull()
   await click('刷新')
-  expect(host.textContent).toContain('Partial Offer projection')
+  expect(document.body.textContent).toContain('Partial Offer projection')
   expect(vi.mocked(admin.read).mock.calls.filter(([operation, input]) => operation === 'catalog.admin-plans.get' && 'plan_id' in input && input.plan_id === planId)).toHaveLength(3)
   expect(admin.write).not.toHaveBeenCalled()
 })
@@ -268,7 +268,7 @@ it('hides cached catalog rows when a direct editor read is forbidden and recheck
 it('rejects fractional or overflowing minor prices before contacting the publication owner', async () => {
   await existing(); await capacity(); await change('catalog-price-monthly', '1.23'); await submit()
   expect(admin.write).not.toHaveBeenCalled()
-  expect(host.textContent).toContain('最小货币单位整数')
+  expect(document.body.textContent).toContain('最小货币单位整数')
   await change('catalog-price-monthly', '9223372036854775808'); await submit()
   expect(admin.write).not.toHaveBeenCalled()
 })
@@ -284,14 +284,14 @@ it('requires confirmation before replacing plan content and preserves all other 
   expect(field('catalog-content').value).toContain('0 Mbps')
   expect(field('catalog-content').value).toContain('设备数量：不限')
   expect(field('catalog-price-monthly').value).toBe(originalPrice)
-  expect(host.querySelector('[aria-label="已选套餐权限组"]')?.textContent).toContain('Authoritative group · #' + groupId)
+  expect(document.querySelector('[aria-label="已选套餐权限组"]')?.textContent).toContain('Authoritative group · #' + groupId)
   expect(admin.write).not.toHaveBeenCalled()
 })
 
 it('inserts a content template immediately when the plan description is empty', async () => {
   await existing(); await change('catalog-content', '')
   await click('使用内容模板')
-  expect(document.querySelector('[role="dialog"]')).toBeNull()
+  expect(document.querySelector('.admin-confirm-dialog')).toBeNull()
   expect(field('catalog-content').value).toContain('## Complete authoritative plan')
   expect(admin.write).not.toHaveBeenCalled()
 })
@@ -300,7 +300,8 @@ it('inserts a content template immediately when the plan description is empty', 
 it('keeps the publication draft when an inline permission group create is denied', async () => {
   await existing(); await change('catalog-name', 'Still retained')
   await click('选择套餐权限组')
-  const input = host.querySelector<HTMLInputElement>('[aria-label="新权限组名称"]')!
+  await click('新建权限组')
+  const input = document.querySelector<HTMLInputElement>('[aria-label="新权限组名称"]')!
   await act(async () => { Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(input, 'New group'); input.dispatchEvent(new Event('input', { bubbles: true })) })
   vi.mocked(admin.write).mockRejectedValueOnce(new CoreAdminApiError('FORBIDDEN', 403))
   await click('创建并选择权限组')

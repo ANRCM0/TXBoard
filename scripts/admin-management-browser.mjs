@@ -5,6 +5,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { chromium } from 'playwright'
 import { managementFixture } from './lib/admin-management-fixture.mjs'
+import { acceptAdminConfirmation } from './lib/admin-navigation.mjs'
 
 const root = fileURLToPath(new URL('../', import.meta.url))
 const output = path.join(root, 'artifacts/admin-management-browser')
@@ -80,12 +81,64 @@ async function open(fixture, pathname) {
   verify(state)
 }
 async function screenshot(page, name) { await page.screenshot({ path: path.join(output, name + '.png'), fullPage: true }) }
+async function nestedEditors(fixture, mobile = false) {
+  await open(fixture, '/server/manage')
+  const { page, state } = fixture
+  const before = writes(state).length
+  const record = page.getByRole('row').filter({ hasText: 'Native node' })
+  await record.getByRole('button', { name: '编辑', exact: true }).click()
+  const parent = page.getByRole('dialog', { name: '编辑节点配置', exact: true })
+  await parent.getByLabel('节点名称').fill('Retained node draft')
+  await parent.getByRole('button', { name: '高级出站、路由与证书配置', exact: true }).click()
+  const child = page.getByRole('dialog', { name: '高级出站、路由与证书配置', exact: true })
+  assert.equal(await parent.getAttribute('inert'), '')
+  await child.getByRole('tab', { name: '路由配置', exact: true }).click()
+  const json = child.getByLabel('自定义 Routes', { exact: true })
+  await json.fill('[{"action":"reject"}]')
+  await child.getByRole('button', { name: '应用到节点草稿', exact: true }).click()
+  await child.getByRole('alert').getByText('请先修正 JSON 并解析应用，再将高级配置应用到节点草稿。', { exact: true }).waitFor()
+  await child.getByRole('button', { name: '解析并应用 自定义 Routes', exact: true }).click()
+  assert.equal(await page.locator('[role="dialog"]').count(), 3)
+  await screenshot(page, mobile ? 'nested-confirmation-mobile' : 'nested-confirmation-desktop')
+  await page.keyboard.press('Escape')
+  assert.equal(await json.inputValue(), '[{"action":"reject"}]')
+  await child.getByRole('button', { name: '解析并应用 自定义 Routes', exact: true }).click()
+  await acceptAdminConfirmation(page)
+  await child.getByRole('button', { name: '取消高级配置', exact: true }).click()
+  await page.keyboard.press('Escape')
+  await child.getByRole('button', { name: '取消高级配置', exact: true }).click()
+  await acceptAdminConfirmation(page)
+  await child.waitFor({ state: 'detached' })
+  assert.equal(await parent.getByLabel('节点名称').inputValue(), 'Retained node draft')
+  assert.equal(await parent.getAttribute('inert'), null)
+  await parent.getByRole('button', { name: '选择权限组', exact: true }).click()
+  await parent.getByRole('button', { name: '新建权限组', exact: true }).click()
+  const group = page.getByRole('dialog', { name: '新建权限组', exact: true })
+  await group.getByLabel('新权限组名称', { exact: true }).fill('Unsubmitted group')
+  await group.getByRole('button', { name: '取消创建权限组', exact: true }).click()
+  await page.keyboard.press('Escape')
+  assert.equal(await group.getByLabel('新权限组名称', { exact: true }).inputValue(), 'Unsubmitted group')
+  await group.getByRole('button', { name: '取消创建权限组', exact: true }).click()
+  await acceptAdminConfirmation(page)
+  await group.waitFor({ state: 'detached' })
+  const bounds = await parent.locator('.modal-card').evaluate(element => {
+    const box = element.getBoundingClientRect()
+    return { left: box.left, right: box.right, top: box.top, bottom: box.bottom, width: innerWidth, height: innerHeight }
+  })
+  assert.ok(bounds.left >= 0 && bounds.right <= bounds.width && bounds.top >= 0 && bounds.bottom <= bounds.height)
+  await screenshot(page, mobile ? 'node-editor-mobile' : 'node-editor-desktop')
+  await parent.locator('.modal-header').getByRole('button', { name: '关闭', exact: true }).click()
+  await acceptAdminConfirmation(page)
+  await parent.waitFor({ state: 'detached' })
+  assert.equal(writes(state).length, before)
+  assert.equal(await page.evaluate(() => document.body.style.overflow), '')
+  passed((mobile ? 'mobile' : 'desktop') + ' nested advanced, group and confirmation dialogs retain parent drafts, reject unapplied JSON and perform no writes on cancel')
+}
 try {
   browser = await chromium.launch({ headless: true, executablePath: process.env.PLAYWRIGHT_EXECUTABLE_PATH || undefined })
   const desktop = await managementFixture(browser, { width: 1440, height: 1000 })
   fixtures.push(desktop)
   const { page, state } = desktop
-  page.on('dialog', dialog => dialog.accept())
   for (const [pathname] of routes) await open(desktop, pathname)
   passed('all management paths load built native pages through generated Core contracts')
 
@@ -216,6 +269,7 @@ try {
   await page.getByText('当前账号没有此操作的权限，已隐藏资源数据。', { exact: true }).waitFor()
   assert.equal(await page.locator('.native-management-page').getByRole('heading', { name: 'Native node', exact: true }).count(), 0)
   assert.equal(await page.getByRole('button', { name: '删除节点', exact: true }).count(), 0); state.denied.clear()
+  await nestedEditors(desktop)
   await open(desktop, '/server/manage')
   await page.getByRole('row').filter({ hasText: 'Native node' }).getByRole('checkbox').check()
   await page.getByRole('button', { name: '批量启用', exact: true }).click()
@@ -269,6 +323,7 @@ try {
   const beforeResetVersion = state.subscription.subscription_version
   const afterResetVersion = String(BigInt(beforeResetVersion) + 1n)
   await page.getByRole('button', { name: '重置订阅流量周期', exact: true }).click()
+  await acceptAdminConfirmation(page)
   await page.getByText('查看订阅标识与原始用量', { exact: true }).click()
   await page.getByText(afterResetVersion, { exact: true }).waitFor()
   const reset = state.calls.find(call => call.operation === 'subscription.lifecycle.reset').input
@@ -300,6 +355,7 @@ try {
     assert.equal(await mobile.page.locator('.admin-sidebar.is-open').count(), 0)
     await screenshot(mobile.page, pathname.replace(/^\//, '').replaceAll('/', '-') + '-mobile')
   }
+  await nestedEditors(mobile, true)
   verify(mobile.state)
   passed('all management paths retain bounded mobile layouts')
   await writeFile(path.join(output, 'result.json'), JSON.stringify({ passed: true, checks,

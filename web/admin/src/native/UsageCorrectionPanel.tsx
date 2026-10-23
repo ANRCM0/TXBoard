@@ -10,6 +10,7 @@ import { ManagementFeedback, managementError } from './Feedback'
 import { NetworkRecovery, useNetworkManagement } from './NetworkManagement'
 import { admin, workflowActions } from './session'
 import { unixDate } from './readPresentation'
+import { useAdminConfirmation } from './useAdminConfirmation'
 
 type Entry = CoreOutput<'usage.admin-settled-entries.list'>['items'][number]
 type Correction = CoreInput<'usage.admin-corrections.create'>
@@ -25,6 +26,7 @@ export function usageCorrectionInput(userId: string, entry: Entry, draft: Draft)
 }
 
 export function UsageCorrectionPanel({ userId, locked, onChanged }: { userId: string; locked: boolean; onChanged: () => void }) {
+  const confirm = useAdminConfirmation(() => !locked && !management.denied, userId)
   useLocale()
   const [cursor, setCursor] = useState<string>(), [showHistory, setShowHistory] = useState(false), [historyCursor, setHistoryCursor] = useState<string>()
   const entries = useQuery({ queryKey: ['native-admin', 'settled-usage-entries', userId, cursor],
@@ -42,13 +44,13 @@ export function UsageCorrectionPanel({ userId, locked, onChanged }: { userId: st
   const dirty = !!editing && JSON.stringify(editing.draft) !== JSON.stringify(draftFor(editing.entry))
   useDirtyDraft(dirty && draftGeneration.current === generation && !management.denied && !management.state.pending)
   useEffect(() => { if (!dirty) return; const guard = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = '' }; window.addEventListener('beforeunload', guard); return () => window.removeEventListener('beforeunload', guard) }, [dirty])
-  function close() { if (!management.state.busy && (!dirty || window.confirm(t('关闭会丢弃尚未提交的流量修正，确认关闭？')))) setEditing(undefined) }
+  async function close() { if (!management.state.busy && (!dirty || (await confirm(t('关闭会丢弃尚未提交的流量修正，确认关闭？'))))) setEditing(undefined) }
   function update(field: keyof Draft, value: string) { setEditing(old => old ? { ...old, draft: { ...old.draft, [field]: value } } : old) }
   async function submit(event: FormEvent) {
     event.preventDefault(); if (!editing || blocked) return; setError('')
     try {
       const input = usageCorrectionInput(userId, editing.entry, editing.draft)
-      if (!window.confirm(t('确认修正这条已结算记录的计费用量？原始节点观测和签名回执将保留，修正会单独留证。'))) return
+      if (!(await confirm(t('确认修正这条已结算记录的计费用量？原始节点观测和签名回执将保留，修正会单独留证。')))) return
       await workflowActions.run('usage.admin-corrections.create', input)
       if (!mounted.current || generation !== workflowActions.generation()) return
       setEditing(undefined); await management.refresh()
@@ -75,7 +77,7 @@ export function UsageCorrectionPanel({ userId, locked, onChanged }: { userId: st
       <Field label={t('修正后计费上行（字节）')} required><Input inputMode="numeric" value={editing.draft.up} disabled={blocked} onChange={event => update('up', event.target.value)} /></Field>
       <Field label={t('修正后计费下行（字节）')} required><Input inputMode="numeric" value={editing.draft.down} disabled={blocked} onChange={event => update('down', event.target.value)} /></Field>
       <Field label={t('流量修正原因编号')} required><Input maxLength={64} value={editing.draft.reason} disabled={blocked} onChange={event => update('reason', event.target.value)} /></Field>
-      {error ? <><p role="alert">{t(error)}</p><button type="button" className="button" disabled={management.state.busy} onClick={() => { if (!dirty || window.confirm(t('重新读取会丢弃流量修正草稿，确认继续？'))) { setEditing(undefined); void management.refresh() } }}>{t('重新读取已结算用量')}</button></> : null}
+      {error ? <><p role="alert">{t(error)}</p><button type="button" className="button" disabled={management.state.busy} onClick={async () => { if (!dirty || (await confirm(t('重新读取会丢弃流量修正草稿，确认继续？')))) { setEditing(undefined); void management.refresh() } }}>{t('重新读取已结算用量')}</button></> : null}
       <div className="network-form-actions"><button className="button primary" disabled={blocked}>{t('保存流量修正')}</button><button type="button" className="button" disabled={management.state.busy} onClick={close}>{t('取消')}</button></div>
     </form></Modal> : null}
   </DetailSection>

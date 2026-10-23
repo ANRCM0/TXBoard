@@ -6,6 +6,9 @@ TXBoard's generated Core operations still own reads, writes, versions, permissio
 and recovery. The reference project's legacy HTTP endpoints and numeric identity
 conversions are not part of this adaptation.
 
+The follow-up [page refinement ledger](admin-page-refinement.md) records the
+35-destination review, sectioned forms and nested dialog behavior.
+
 | Reference interaction | TXBoard implementation |
 | --- | --- |
 | Table pagination: page size, first/last page, page jump | `TablePagination`, `useListPagination` and `ReadList` |

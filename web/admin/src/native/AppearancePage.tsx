@@ -5,6 +5,7 @@ import { CoreAdminApiError, type CoreInput } from '@txboard/core-sdk'
 import { admin, useAdminSession, workflowActions } from './session'
 import { ManagementFeedback } from './Feedback'
 import { PageHeader } from '../components/ui/PageHeader'
+import { FormSection } from '../components/ui/FormSection'
 import { Field, Input, Select } from '../components/ui/Field'
 import { requestConfirm } from '../components/ui/ConfirmDialog'
 import { safeLoginBackground, siteAppearanceDefaults, parseSiteAppearance, type SiteAppearance } from '../lib/useSiteAppearance'
@@ -94,11 +95,13 @@ export function AppearancePage() {
     {blocked ? <p role="alert">{t("无法确认外观设置权限，已清空表单和草稿。")}</p> : null}
     {pending ? <section className="list-card"><h2>{t("外观保存结果待确认")}</h2><p>{t("重新读取当前设置权限后，使用原请求和原幂等键确认结果。")}</p><button className="button" disabled={blocked || query.isFetching || workflow.busy} onClick={() => void save(true)}>{t("恢复原请求")}</button></section> : null}
     {!blocked && version && !query.isError ? <form className="list-card appearance-form" onSubmit={event => { event.preventDefault(); void save() }}>
+      <FormSection title={t("界面外观")}><div className="refined-appearance-fields">
       <Field label={t("侧栏表面风格")} hint={t("设置移动端导航抽屉的表面颜色。")}><Select value={draft.admin_sidebar_style} disabled={locked} onChange={event => setDraft(value => ({ ...value, admin_sidebar_style: event.target.value as SiteAppearance['admin_sidebar_style'] }))}>{choices.admin_sidebar_style.map(([value, label]) => <option key={value} value={value}>{t(label)}</option>)}</Select></Field>
       <Field label={t("页面标题区风格")} hint={t("强调色模式为每页标题增加色条和浅色底，不切换导航布局。")}><Select value={draft.admin_header_style} disabled={locked} onChange={event => setDraft(value => ({ ...value, admin_header_style: event.target.value as SiteAppearance['admin_header_style'] }))}>{choices.admin_header_style.map(([value, label]) => <option key={value} value={value}>{t(label)}</option>)}</Select></Field>
       <Field label={t("强调色")} hint={t("应用于按钮、焦点和强调元素；深色模式使用适配的对比颜色。")}><Select value={draft.admin_color_scheme} disabled={locked} onChange={event => setDraft(value => ({ ...value, admin_color_scheme: event.target.value as SiteAppearance['admin_color_scheme'] }))}>{choices.admin_color_scheme.map(([value, label]) => <option key={value} value={value}>{t(label)}</option>)}</Select></Field>
+      </div></FormSection><FormSection title={t("登录页面")}><div className="refined-appearance-fields">
       <Field label={t("登录背景地址")} hint={t("仅在后台登录页展示。支持 HTTPS 或同源绝对路径；清空恢复默认背景，图片加载失败自动回退。")}><Input value={draft.admin_login_background_url} disabled={locked} maxLength={2048} autoComplete="off" placeholder="https://example.com/login.jpg" onChange={event => setDraft(value => ({ ...value, admin_login_background_url: event.target.value }))} /></Field>
-      <footer className="appearance-actions"><span>{dirty ? t('修改尚未保存') : t('当前配置')}</span><button type="button" className="button" disabled={!dirty || workflow.busy || !!workflow.pending} onClick={reset}>{t("取消修改")}</button><button type="submit" className="button primary" disabled={locked || !dirty}>{t("保存外观")}</button></footer>
+      </div></FormSection><footer className="appearance-actions"><span>{dirty ? t('修改尚未保存') : t('当前配置')}</span><button type="button" className="button" disabled={!dirty || workflow.busy || !!workflow.pending} onClick={reset}>{t("取消修改")}</button><button type="submit" className="button primary" disabled={locked || !dirty}>{t("保存外观")}</button></footer>
     </form> : null}
   </div>
 }

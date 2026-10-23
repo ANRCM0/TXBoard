@@ -10,11 +10,13 @@ export type ConfirmRequest = {
   danger?: boolean
   action: () => void
   cancelAction?: () => void
+  signal?: AbortSignal
 }
 
 // Module-level store, mirroring the dialog stack in lib/useDialog: any page can
 // ask for confirmation without threading dialog state through props.
 let pending: ConfirmRequest | null = null
+let releaseAbort: (() => void) | undefined
 const listeners = new Set<() => void>()
 
 function publish() {
@@ -23,31 +25,38 @@ function publish() {
 
 /** Ask for confirmation before running a destructive or stateful action. */
 export function requestConfirm(request: ConfirmRequest) {
+  dismissConfirm()
+  if (request.signal?.aborted) { request.cancelAction?.(); return }
   pending = request
+  const abort = () => { if (pending === request) dismissConfirm() }
+  request.signal?.addEventListener('abort', abort, { once: true })
+  releaseAbort = () => request.signal?.removeEventListener('abort', abort)
   publish()
+}
+
+function takePending() {
+  const request = pending
+  pending = null
+  releaseAbort?.(); releaseAbort = undefined
+  publish()
+  return request
 }
 
 /** Close any open confirmation without running its action. */
 export function dismissConfirm() {
-  pending = null
-  publish()
+  takePending()?.cancelAction?.()
 }
 
-function dismiss() {
-  dismissConfirm()
-}
-
-function ConfirmDialog({ request, onClose }: { request: ConfirmRequest | null; onClose: () => void }) {
+function ConfirmDialog({ request }: { request: ConfirmRequest | null }) {
   useLocale()
   if (!request) return null
 
-  const cancel = () => {
-    onClose()
-    request.cancelAction?.()
-  }
+  const cancel = () => { if (pending === request) dismissConfirm() }
 
   return <Modal
     open
+    size="compact"
+    className="admin-confirm-dialog"
     title={request.title}
     onClose={cancel}
     footer={<div className="modal-actions">
@@ -56,8 +65,7 @@ function ConfirmDialog({ request, onClose }: { request: ConfirmRequest | null; o
         type="button"
         className={'button ' + (request.danger ? 'danger' : 'primary')}
         onClick={() => {
-          onClose()
-          request.action()
+          if (pending === request) takePending()?.action()
         }}
       >{request.confirmLabel || t("确认")}</button>
     </div>}
@@ -75,5 +83,5 @@ export function ConfirmDialogHost() {
     return () => { listeners.delete(notify) }
   }, [])
 
-  return <ConfirmDialog request={pending} onClose={dismiss}/>
+  return <ConfirmDialog request={pending}/>
 }

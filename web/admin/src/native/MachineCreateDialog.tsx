@@ -4,6 +4,7 @@ import { useEffect, useId, useState, type FormEvent } from 'react'
 import type { CoreInput } from '@txboard/core-sdk'
 import { Modal } from '../components/ui/Modal'
 import { Field, Input, Select, Switch, Textarea } from '../components/ui/Field'
+import { useAdminConfirmation } from './useAdminConfirmation'
 
 export function MachineCreateDialog({ open, locked, onClose, onCreate }: {
   open: boolean
@@ -11,6 +12,7 @@ export function MachineCreateDialog({ open, locked, onClose, onCreate }: {
   onClose: () => void
   onCreate: (input: CoreInput<'network.machines.create'>) => Promise<void>
 }) {
+  const confirm = useAdminConfirmation(() => !locked)
   useLocale()
   const formId = useId()
   const [name, setName] = useState(''), [notes, setNotes] = useState('')
@@ -18,15 +20,15 @@ export function MachineCreateDialog({ open, locked, onClose, onCreate }: {
   useEffect(() => { if (open) { setName(''); setNotes(''); setActive(true); setChannel('stable') } }, [open])
   const dirty = !!name || !!notes || !active || channel !== 'stable'
   useDirtyDraft(open && dirty)
-  function close() {
-    if (!locked && (!dirty || window.confirm(t("关闭后将丢弃未创建的服务器草稿，确定继续？")))) onClose()
+  async function close() {
+    if (!locked && (!dirty || (await confirm(t("关闭后将丢弃未创建的服务器草稿，确定继续？"))))) onClose()
   }
   async function submit(event: FormEvent) {
     event.preventDefault()
     if (locked || !name.trim()) return
     await onCreate({ name: name.trim(), notes: notes.trim() || null, is_active: active, image_channel: channel })
   }
-  return <Modal open={open} title={t("新建服务器")} subtitle={t("创建后可在详情中查看认证信息、安装命令和负载历史。")} onClose={close}
+  return <Modal size="compact" open={open} title={t("新建服务器")} subtitle={t("创建后可在详情中查看认证信息、安装命令和负载历史。")} onClose={close}
     className="admin-form-dialog"
     footer={<><button type="button" className="button" disabled={locked} onClick={close}>{t("取消")}</button><button type="submit" form={formId} className="button primary" disabled={locked || !name.trim()}>{t("创建服务器")}</button></>}>
     <form id={formId} className="native-content-form" onSubmit={event => void submit(event)}>

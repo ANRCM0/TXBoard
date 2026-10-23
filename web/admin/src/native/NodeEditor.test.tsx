@@ -98,9 +98,35 @@ it('keeps separate protocol drafts when switching types and requires confirmatio
 })
 
 it('blocks malformed advanced JSON rather than submitting the last valid value', async () => {
-  await render(); const details = document.querySelector('details')!; details.open = true
-  await input('自定义 Routes', '{'); await submit()
+  await render(); await click('高级出站、路由与证书配置'); await click('路由配置')
+  await input('自定义 Routes', '{'); await click('应用到节点草稿')
   expect(admin.write).not.toHaveBeenCalled(); expect(document.body.textContent).toContain('JSON 格式有误')
+})
+
+it('keeps the main draft and original advanced values when cancelling the child editor', async () => {
+  await render(); await input('节点名称', 'main-draft')
+  await click('高级出站、路由与证书配置'); await click('路由配置')
+  await input('自定义 Routes', '[{"action":"reject"}]'); await click('解析并应用 自定义 Routes')
+  vi.mocked(window.confirm).mockReturnValueOnce(false); await click('取消高级配置')
+  expect(document.querySelectorAll('[role="dialog"]')).toHaveLength(2)
+  await click('取消高级配置')
+  expect(document.querySelectorAll('[role="dialog"]')).toHaveLength(1)
+  expect((control('节点名称') as HTMLInputElement).value).toBe('main-draft')
+  await click('高级出站、路由与证书配置'); await click('路由配置')
+  expect((control('自定义 Routes') as HTMLTextAreaElement).value).toBe('[]')
+  expect(admin.write).not.toHaveBeenCalled()
+})
+
+it('applies advanced values only to the main draft until the complete configuration is saved', async () => {
+  await render(); await click('高级出站、路由与证书配置'); await click('路由配置')
+  await input('自定义 Routes', '[{"action":"reject"}]')
+  await click('解析并应用 自定义 Routes'); await click('应用到节点草稿')
+  expect(document.querySelectorAll('[role="dialog"]')).toHaveLength(1)
+  expect(admin.write).not.toHaveBeenCalled()
+  await submit()
+  const payload = JSON.parse((vi.mocked(admin.write).mock.calls[0][1] as { configuration_json: string }).configuration_json)
+  expect(payload).toEqual({ ...initial, custom_routes: [{ action: 'reject' }] })
+  expect(vi.mocked(admin.write).mock.calls[0][1]).toMatchObject({ expected_revision: revision })
 })
 
 it('preserves a conflicting draft until an explicit authoritative reload and uses a new revision and request key', async () => {
@@ -149,6 +175,7 @@ it('does not apply a generated key response to another selected protocol', async
 
 it('retains the node draft and sensitive configuration when only inline group creation is forbidden', async () => {
   await render(); await input('节点名称', 'retained-node-draft'); await click('选择权限组')
+  await click('新建权限组')
   const name = document.querySelector<HTMLInputElement>('input[aria-label="新权限组名称"]')!
   await act(async () => { Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(name, 'new-permission-group'); name.dispatchEvent(new Event('input', { bubbles: true })) })
   vi.mocked(admin.write).mockRejectedValueOnce(new CoreAdminApiError('FORBIDDEN', 403)); await click('创建并选择权限组')

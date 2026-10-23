@@ -22,6 +22,7 @@ import './components/ui/ui.css'
 import './components/ui/form-dialog.css'
 import './admin-refresh.css'
 import './admin-monochrome.css'
+import './admin-refinement.css'
 
 function RouteLoading() {
   useLocale()

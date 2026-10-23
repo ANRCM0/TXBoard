@@ -27,6 +27,7 @@ import { RowActionsMenu } from '../../components/ui/RowActionsMenu'
 import { requestConfirm } from '../../components/ui/ConfirmDialog'
 import type { Column } from '../../components/ui/DataTable'
 import './UsersPage.css'
+import { useAdminConfirmation } from '../../native/useAdminConfirmation'
 
 type Account = CoreOutput<'identity.accounts.list'>[number]
 const baseColumns = (): Column<Account>[] => [
@@ -38,6 +39,7 @@ const baseColumns = (): Column<Account>[] => [
   { key: 'login', header: t("最近登录"), render: row => row.last_login_at === null ? <span className="user-never-login">{t("尚未登录")}</span> : unixDate(row.last_login_at) },
 ]
 export function UsersPage() {
+  const confirm = useAdminConfirmation()
   useLocale()
   const navigate = useNavigate()
   const state = useSyncExternalStore(workflowActions.subscribe, workflowActions.snapshot)
@@ -130,8 +132,8 @@ export function UsersPage() {
   function openCreate() {
     setNewEmail(''); setNewPassword(''); setCreateError(''); setCreating(true)
   }
-  function closeCreate() {
-    if (state.busy || (createDirty && !window.confirm(t('新用户尚未创建，放弃当前输入？')))) return
+  async function closeCreate() {
+    if (state.busy || (createDirty && !(await confirm(t('新用户尚未创建，放弃当前输入？'))))) return
     setCreating(false); setNewEmail(''); setNewPassword(''); setCreateError('')
   }
   async function createAccount(event: FormEvent) {

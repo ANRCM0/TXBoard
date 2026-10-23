@@ -38,10 +38,10 @@ beforeEach(() => {
 afterEach(() => { act(() => root.unmount()); client.clear(); host.remove(); workflowActions.reset(); vi.restoreAllMocks() })
 async function settle() { await act(async () => { await new Promise(resolve => setTimeout(resolve, 20)) }) }
 async function render() { await act(async () => root.render(<QueryClientProvider client={client}><Harness /></QueryClientProvider>)); await settle() }
-function button(text: string) { return [...host.querySelectorAll<HTMLButtonElement>('button')].find(element => element.textContent?.trim() === text)! }
+function button(text: string) { return [...document.querySelectorAll<HTMLButtonElement>('button')].find(element => element.textContent?.trim() === text)! }
 async function click(text: string) { await act(async () => button(text).click()); await settle() }
 async function input(label: string, value: string) {
-  const element = host.querySelector<HTMLInputElement>('input[aria-label="' + label + '"]')!
+  const element = document.querySelector<HTMLInputElement>('input[aria-label="' + label + '"]')!
   await act(async () => { Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(element, value); element.dispatchEvent(new Event('input', { bubbles: true })) }); await settle()
 }
 
@@ -52,40 +52,40 @@ it('resolves selected names outside the current page and retains exact IDs acros
   await click('选择权限组'); await input('搜索本页权限组', '不存在')
   expect(host.textContent).toContain('本页没有符合条件的权限组')
   await click('下一页权限组')
-  const option = [...host.querySelectorAll<HTMLInputElement>('input[type=checkbox]')].find(element => element.parentElement?.textContent?.includes('第二页权限组'))!
+  const option = [...document.querySelectorAll<HTMLInputElement>('input[type=checkbox]')].find(element => element.parentElement?.textContent?.includes('第二页权限组'))!
   await act(async () => option.click()); await settle()
-  expect(host.querySelector('output')?.textContent).toBe(JSON.stringify([selectedId, '2']))
+  expect(document.querySelector('output')?.textContent).toBe(JSON.stringify([selectedId, '2']))
   expect(host.textContent).toContain('仅搜索当前页')
 })
 
 it('creates and selects a named group while retaining the parent draft', async () => {
-  await render(); await click('选择权限组'); await input('新权限组名称', ' 新建权限组 ')
+  await render(); await click('选择权限组'); await click('新建权限组'); await input('新权限组名称', ' 新建权限组 ')
   await click('创建并选择权限组')
   expect(admin.write).toHaveBeenCalledExactlyOnceWith('network.groups.save', { name: '新建权限组' }, expect.any(String))
-  expect(host.querySelector('output')?.textContent).toBe(JSON.stringify([selectedId, createdId]))
-  expect(host.querySelector<HTMLInputElement>('input[aria-label="父级草稿"]')?.value).toBe('unchanged parent draft')
+  expect(document.querySelector('output')?.textContent).toBe(JSON.stringify([selectedId, createdId]))
+  expect(document.querySelector<HTMLInputElement>('input[aria-label="父级草稿"]')?.value).toBe('unchanged parent draft')
 })
 
 it('keeps the picker mounted during a delayed confirmed creation so its selected result is applied', async () => {
-  await render(); await click('选择权限组'); await input('新权限组名称', '慢响应权限组')
+  await render(); await click('选择权限组'); await click('新建权限组'); await input('新权限组名称', '慢响应权限组')
   let finish!: (value: unknown) => void
   vi.mocked(admin.write).mockImplementationOnce(() => new Promise(resolve => { finish = resolve }) as never)
   await click('创建并选择权限组')
   expect(button('选择权限组') ?? button('收起权限组')).toBeDefined()
   expect(workflowActions.snapshot().busy).toBe(true)
   await act(async () => finish({ data: { id: createdId } })); await settle()
-  expect(host.querySelector('output')?.textContent).toBe(JSON.stringify([selectedId, createdId]))
+  expect(document.querySelector('output')?.textContent).toBe(JSON.stringify([selectedId, createdId]))
 })
 
 it('recovers an unknown inline creation after its picker unmounts using the identical original request', async () => {
-  await render(); await click('选择权限组'); await input('新权限组名称', '待确认权限组')
+  await render(); await click('选择权限组'); await click('新建权限组'); await input('新权限组名称', '待确认权限组')
   vi.mocked(admin.write).mockRejectedValueOnce(new TypeError('response lost')); await click('创建并选择权限组')
   const original = vi.mocked(admin.write).mock.calls[0]
   expect(workflowActions.snapshot().pending?.unknown).toBe(true)
   expect(button('选择权限组')).toBeUndefined()
   await click('确认原权限组创建')
   expect(vi.mocked(admin.write).mock.calls[1]).toEqual(original)
-  expect(host.querySelector('output')?.textContent).toBe(JSON.stringify([selectedId, createdId]))
+  expect(document.querySelector('output')?.textContent).toBe(JSON.stringify([selectedId, createdId]))
   expect(workflowActions.snapshot().pending).toBeUndefined()
 })
 

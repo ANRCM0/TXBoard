@@ -1,4 +1,11 @@
 import { transferableAbortController } from 'node:util'
+import { vi } from 'vitest'
+
+// Business tests retain their explicit confirm/cancel stubs. The real child-dialog
+// lifecycle is exercised independently by UI tests and browser acceptance.
+vi.mock('../native/useAdminConfirmation', () => ({
+  useAdminConfirmation: () => async (message: string) => window.confirm(message),
+}))
 
 // React Router uses Node's Request; its signal must come from the same realm.
 const nodeController = transferableAbortController()

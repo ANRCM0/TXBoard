@@ -6,6 +6,14 @@ let originalOverflow = ''
 const inertElements = new Map<Element, { count: number; wasInert: boolean }>()
 const selector = 'a[href], button, input, select, textarea, [tabindex]'
 
+function updateLayers() {
+  stack.forEach((dialog, index) => {
+    dialog.style.setProperty('--dialog-depth', String(index))
+    dialog.dataset.dialogDepth = String(index)
+    dialog.toggleAttribute('data-dialog-covered', index < stack.length - 1)
+  })
+}
+
 /** Share focus ownership and scroll locking across nested dialogs. */
 export function useDialog(open: boolean, onClose: () => void) {
   const ref = useRef<HTMLDivElement>(null)
@@ -19,6 +27,7 @@ export function useDialog(open: boolean, onClose: () => void) {
     if (!stack.length) originalOverflow = document.body.style.overflow
     document.body.style.overflow = 'hidden'
     stack.push(dialog)
+    updateLayers()
     const releaseDismissLayer = registerDismissLayer(dialog, () => close.current())
     const background: Element[] = []
     let branch: Element = dialog
@@ -66,6 +75,7 @@ export function useDialog(open: boolean, onClose: () => void) {
       document.removeEventListener('focusin', onFocus)
       const wasTop = stack.at(-1) === dialog
       stack.splice(stack.indexOf(dialog), 1)
+      updateLayers()
       for (const element of background) {
         const state = inertElements.get(element)!
         state.count -= 1

@@ -43,6 +43,10 @@ const sections: Record<string, string> = {
   email_verify: '注册与访问', email_whitelist_enable: '注册与访问', email_gmail_limit_enable: '注册与访问', captcha_enable: '注册与访问', register_limit_by_ip_enable: '注册与访问', email_whitelist_suffix: '注册与访问',
   login_limit_enabled: '登录与注册频率', login_limit_count: '登录与注册频率', login_limit_expire: '登录与注册频率', register_limit_count: '登录与注册频率', register_limit_expire: '登录与注册频率',
   email_host: 'SMTP 服务器', email_port: 'SMTP 服务器', email_username: 'SMTP 服务器', email_from_address: '发件与认证', email_encryption: '发件与认证', email_password: '发件与认证',
+  invite_enable: '交易与邀请', gift_card_enable: '交易与邀请', ticket_enable: '内容与支持', knowledge_enable: '内容与支持', traffic_log_enable: '用户记录', announcement_enable: '内容与支持', register_enable: '注册入口',
+  plan_change_enable: '套餐变更', reset_traffic_method: '流量重置', new_order_event_id: '订单生效策略', renew_order_event_id: '订单生效策略', change_order_event_id: '订单生效策略',
+  server_pull_interval: '同步与上报', server_push_interval: '同步与上报', device_limit_mode: '设备限制',
+  telegram_bot_enable: '机器人连接', telegram_bot_token: '机器人连接', telegram_webhook_url: '回调地址', telegram_discuss_link: '讨论群',
 }
 export function configurationSection(name: string, group: ConfigurationGroup) {
   if (group === 'app') return name.startsWith('windows') ? 'Windows' : name.startsWith('macos') ? 'macOS' : 'Android'

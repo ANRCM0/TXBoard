@@ -2,18 +2,20 @@ import { t, useLocale } from '../lib/i18n'
 import { useDirtyDraft } from '../lib/useDirtyDraft'
 import { useEffect, useId, useRef, useState, useSyncExternalStore, type CSSProperties, type FormEvent } from 'react'
 import { CoreAdminApiError } from '@txboard/core-sdk'
+import { FormSection } from '../components/ui/FormSection'
 import { Modal } from '../components/ui/Modal'
 import { Field, Input, Select, Switch } from '../components/ui/Field'
 import { TagInput } from '../components/ui/TagInput'
 import { ManagementFeedback, managementError } from './Feedback'
 import { admin, workflowActions } from './session'
-import { NodeProtocolFields, NodeJsonField } from './NodeProtocolFields'
+import { NodeProtocolFields } from './NodeProtocolFields'
 import { NodeResourcePicker } from './NodeResourcePicker'
-import { NodeCertificateFields } from './NodeCertificateFields'
+import { NodeAdvancedDialog } from './NodeAdvancedDialog'
 import { GroupCreationRecovery } from './GroupSelector'
 import { newNodeConfiguration, nodeQuotaFromGb, nodeQuotaGb, parseNodeConfiguration, parseNodeProtocols,
   withProtocolValue, type NodeConfiguration, type NodeProtocol, type NodeProtocolField } from './nodeConfiguration'
 import './node-editor.css'
+import { useAdminConfirmation } from './useAdminConfirmation'
 
 const protocolColors: Record<string, string> = {
   shadowsocks: '#2f9e44', vmess: '#c026d3', trojan: '#d97706', hysteria: '#3b82f6',
@@ -29,6 +31,7 @@ function savedId(response: unknown): string | undefined {
 export function NodeEditor({ nodeId, defaultMachineId, onClose, onSaved }: {
   nodeId?: string; defaultMachineId?: string; onClose: () => void; onSaved: (id?: string) => void
 }) {
+  const confirm = useAdminConfirmation(() => !denied, nodeId)
   useLocale()
   const formId = useId()
   const workflow = useSyncExternalStore(workflowActions.subscribe, workflowActions.snapshot)
@@ -38,6 +41,7 @@ export function NodeEditor({ nodeId, defaultMachineId, onClose, onSaved }: {
   const [readError, setReadError] = useState<unknown>(), [error, setError] = useState(''), [loading, setLoading] = useState(true)
   const [loadedGeneration, setLoadedGeneration] = useState(generation)
   const [reload, setReload] = useState(0), [conflict, setConflict] = useState(false), [generating, setGenerating] = useState('')
+  const [advanced, setAdvanced] = useState(false)
   const epoch = useRef(0), drafts = useRef<Record<string, Record<string, unknown>>>({}), latest = useRef(draft)
   latest.current = draft
   const ownWorkflowError = !workflow.errorOperation || workflow.errorOperation.startsWith('network.nodes.') ? workflow.error : undefined
@@ -72,13 +76,13 @@ export function NodeEditor({ nodeId, defaultMachineId, onClose, onSaved }: {
   const dirty = draft && JSON.stringify({ ...draft, transfer_enable: (() => { try { return nodeQuotaFromGb(quota) } catch { return quota } })() }) !== baseline
   useDirtyDraft(!!dirty && !!draft && !loading && !denied && !workflow.pending && loadedGeneration === generation)
   function dirtyJson() { return !!document.getElementById(formId)?.querySelector('[data-json-dirty="true"]') }
-  function close() {
+  async function close() {
     if (workflow.busy) return
-    if (!workflow.pending && (dirty || dirtyJson()) && !window.confirm(t("节点配置尚未保存，确定放弃本次修改？"))) return
+    if (!workflow.pending && (dirty || dirtyJson()) && !(await confirm(t("节点配置尚未保存，确定放弃本次修改？")))) return
     ++epoch.current; onClose()
   }
-  function reread() {
-    if (workflow.busy || ((dirty || dirtyJson()) && !window.confirm(t("重新读取将替换当前节点草稿，确定继续？")))) return
+  async function reread() {
+    if (workflow.busy || ((dirty || dirtyJson()) && !(await confirm(t("重新读取将替换当前节点草稿，确定继续？"))))) return
     setReload(current => current + 1)
   }
   function patch(values: Partial<NodeConfiguration>) { setDraft(current => current ? { ...current, ...values } : current) }
@@ -106,7 +110,7 @@ export function NodeEditor({ nodeId, defaultMachineId, onClose, onSaved }: {
     }
   }
   async function recover() {
-    if (!ownPending || loading || readError || denied || workflow.busy || !window.confirm(t("确认继续查询或完成原节点保存？将复用原配置和原请求编号。"))) return
+    if (!ownPending || loading || readError || denied || workflow.busy || !(await confirm(t("确认继续查询或完成原节点保存？将复用原配置和原请求编号。")))) return
     const current = epoch.current, session = workflowActions.generation()
     try {
       const response = await workflowActions.runResult(ownPending.operation, ownPending.input)
@@ -147,7 +151,7 @@ export function NodeEditor({ nodeId, defaultMachineId, onClose, onSaved }: {
   const protocol = protocols.find(item => item.type === draft?.type)
   const protocolColor = protocol ? protocolColors[protocol.type] ?? '#3d5afe' : '#98a2b3'
   return <Modal open title={nodeId ? t("编辑节点配置") : t("创建节点")} subtitle={t("协议表单由当前服务端协议定义提供。显示、部署启用与服务器归属分别保存。")}
-    wide className="node-editor-modal" bodyClassName="node-editor-body" onClose={close}
+    size="wide" className="node-editor-modal" bodyClassName="node-editor-body" onClose={close}
     headerAction={<span className="node-editor-protocol-badge" style={{ '--node-protocol': protocolColor } as CSSProperties}>
       {protocol ? t(protocol.label) : t("请选择协议")}
     </span>}
@@ -160,10 +164,10 @@ export function NodeEditor({ nodeId, defaultMachineId, onClose, onSaved }: {
       {ownPending ? <button type="button" className="button" disabled={loading || !!readError || denied || workflow.busy} onClick={() => void recover()}>{t("确认原节点保存")}</button> : null}</div> : null}
     <GroupCreationRecovery onCreated={id => setDraft(current => current ? { ...current, group_ids: [...new Set([...current.group_ids, id])] } : current)} />
     {draft && !denied && (!workflow.pending || workflow.busy && workflow.pending.operation === 'network.groups.save' && !('id' in workflow.pending.input)) ? <form id={formId} className="node-editor-form" onSubmit={event => void save(event)}>
-      <section><h4>{t("协议与基础信息")}</h4><div className="node-editor-grid">
-        <Field label={t("协议类型")} required><Select value={draft.type} disabled={locked} onChange={event => {
-          if (dirtyJson() && !window.confirm(t('切换协议将放弃尚未应用的 JSON 修改，确定继续？'))) return
+      <FormSection title={t("协议与基础信息")}><div className="node-editor-grid">
+        <Field label={t("协议类型")} required><Select value={draft.type} disabled={locked} onChange={async event => {
           const next = protocols.find(item => item.type === event.target.value)
+          if (dirtyJson() && !(await confirm(t('切换协议将放弃尚未应用的 JSON 修改，确定继续？')))) return
           if (!next) return
           drafts.current[draft.type] = structuredClone(draft.protocol_settings)
           patch({ type: next.type, parent_id: null, protocol_settings: structuredClone(drafts.current[next.type] ?? next.defaults) })
@@ -178,8 +182,8 @@ export function NodeEditor({ nodeId, defaultMachineId, onClose, onSaved }: {
         <Field label={t("部署启用状态")}><Select value={draft.enabled === null ? 'null' : String(draft.enabled)} disabled={locked} onChange={event => patch({ enabled: event.target.value === 'null' ? null : event.target.value === 'true' })}>
           <option value="true">{t("启用")}</option><option value="false">{t("停用")}</option><option value="null">{t("跟随默认设置")}</option></Select></Field>
         <Field label={t("标签")} className="node-editor-wide"><TagInput id={formId + '-tags'} value={draft.tags} maxItems={100} maxLength={100} disabled={locked} onChange={tags => patch({ tags })} /></Field>
-      </div></section>
-      <section><h4>{t("流量与倍率")}</h4><div className="node-editor-grid">
+      </div></FormSection>
+      <FormSection title={t("流量与倍率")}><div className="node-editor-grid">
         <Field label={t("流量倍率")} required hint={t("最多两位小数，0 表示不计费。")}><Input value={draft.rate} pattern="(0|[1-9][0-9]{0,5})(\.[0-9]{1,2})?" disabled={locked} onChange={event => patch({ rate: event.target.value })} /></Field>
         <Field label={t("流量上限（GB）")} hint={t("1 GB = 10⁹ 字节；留空或 0 不限流量。")}><Input value={quota} inputMode="decimal" pattern="(0|[1-9][0-9]*)(\.[0-9]{1,9})?" disabled={locked} onChange={event => setQuota(event.target.value)} /></Field>
         <Switch label={t("启用分时倍率")} checked={draft.rate_time_enable} disabled={locked} onChange={event => patch({ rate_time_enable: event.target.checked })} />
@@ -188,20 +192,18 @@ export function NodeEditor({ nodeId, defaultMachineId, onClose, onSaved }: {
         <Field label={t("结束时间 {index}", { index: index + 1 })} required><Input type="time" value={range.end} disabled={locked} onChange={event => patch({ rate_time_ranges: draft.rate_time_ranges.map((row, i) => i === index ? { ...row, end: event.target.value } : row) })} /></Field>
         <Field label={t("倍率 {index}", { index: index + 1 })} required><Input value={range.rate} pattern="(0|[1-9][0-9]{0,5})(\.[0-9]{1,2})?" disabled={locked} onChange={event => patch({ rate_time_ranges: draft.rate_time_ranges.map((row, i) => i === index ? { ...row, rate: event.target.value } : row) })} /></Field>
         <button type="button" className="button" disabled={locked} onClick={() => patch({ rate_time_ranges: draft.rate_time_ranges.filter((_, i) => i !== index) })}>{t("移除时段")}{index + 1}</button>
-      </div>)}<button type="button" className="button" disabled={locked || draft.rate_time_ranges.length >= 100} onClick={() => patch({ rate_time_ranges: [...draft.rate_time_ranges, { start: '00:00', end: '23:59', rate: '1' }] })}>{t("添加倍率时段")}</button></div> : null}</section>
-      <section><h4>{t("资源关联")}</h4><div className="node-editor-grid">
+      </div>)}<button type="button" className="button" disabled={locked || draft.rate_time_ranges.length >= 100} onClick={() => patch({ rate_time_ranges: [...draft.rate_time_ranges, { start: '00:00', end: '23:59', rate: '1' }] })}>{t("添加倍率时段")}</button></div> : null}</FormSection>
+      <FormSection title={t("资源关联")}><div className="node-editor-grid">
         <NodeResourcePicker label={t("权限组")} operation="network.groups.list" multiple value={draft.group_ids} disabled={locked} onChange={group_ids => patch({ group_ids })} />
         <NodeResourcePicker label={t("路由")} operation="network.routes.list" multiple value={draft.route_ids} disabled={locked} onChange={route_ids => patch({ route_ids })} />
         <NodeResourcePicker label={t("服务器")} operation="network.machines.list" value={draft.machine_id ? [draft.machine_id] : []} disabled={locked} onChange={ids => patch({ machine_id: ids[0] ?? null })} />
         <NodeResourcePicker key={draft.type} label={t("父节点")} operation="network.nodes.list" value={draft.parent_id ? [draft.parent_id] : []} disabled={locked || !draft.type} protocol={draft.type} nodeId={nodeId} onChange={ids => patch({ parent_id: ids[0] ?? null })} />
-      </div></section>
-      {protocol ? <section><h4>{t("{protocol}协议配置", { protocol: t(protocol.label) })}</h4><NodeProtocolFields key={protocol.type} protocol={protocol} value={draft.protocol_settings}
-        disabled={locked} generating={generating} onGenerate={field => void generate(field)} onChange={protocol_settings => patch({ protocol_settings })} /></section> : null}
-      <details className="node-editor-advanced"><summary>{t("高级出站、路由与证书配置")}</summary><p>{t("修改前请核对部署端支持的配置格式。JSON 校验通过后仍会由服务端验证。")}</p>
-        <NodeJsonField label={t("自定义 Outbounds")} value={draft.custom_outbounds} arrayOnly disabled={locked} onChange={value => patch({ custom_outbounds: value as unknown[] })} />
-        <NodeJsonField label={t("自定义 Routes")} value={draft.custom_routes} arrayOnly disabled={locked} onChange={value => patch({ custom_routes: value as unknown[] })} />
-        <NodeCertificateFields protocol={protocol} value={draft.cert_config} disabled={locked} onChange={cert_config => patch({ cert_config })} />
-      </details>
+      </div></FormSection>
+      {protocol ? <FormSection title={t("{protocol}协议配置", { protocol: t(protocol.label) })}><NodeProtocolFields key={protocol.type} protocol={protocol} value={draft.protocol_settings}
+        disabled={locked} generating={generating} onGenerate={field => void generate(field)} onChange={protocol_settings => patch({ protocol_settings })} /></FormSection> : null}
+      <div className="node-advanced-entry"><div><h3>{t("高级配置")}</h3><p>{t("配置自定义出站、路由和证书，应用后随节点配置一起保存。")}</p></div><button type="button" className="button" disabled={locked} onClick={() => setAdvanced(true)}>{t("高级出站、路由与证书配置")}</button></div>
     </form> : null}
+    {advanced && draft && !denied ? <NodeAdvancedDialog value={draft} protocol={protocol} disabled={locked}
+      onApply={patch} onClose={() => setAdvanced(false)} /> : null}
   </Modal>
 }

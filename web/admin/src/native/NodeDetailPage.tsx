@@ -22,12 +22,14 @@ import { ChartSkeleton } from '../components/ui/Skeleton'
 import { LineChart } from '../components/charts/ReferenceCharts'
 import { nodeTrafficHistory, type OverviewRange } from './overviewCharts'
 import { NodeEditor } from './NodeEditor'
+import { useAdminConfirmation } from './useAdminConfirmation'
 
 
 export function NodeDetailPage() {
   useLocale()
   const trafficRanges = ([7, 14, 30] as const).map(value => ({ value, label: t("{days} 天", { days: value }) }))
   const { nodeId = '' } = useParams(), navigate = useNavigate()
+  const confirm = useAdminConfirmation(() => !management.denied && !!node, nodeId)
   const [machine, setMachine] = useState('')
   const [editing, setEditing] = useState(false)
   const [trafficRange, setTrafficRange] = useState<OverviewRange>(14)
@@ -45,7 +47,7 @@ export function NodeDetailPage() {
   useEffect(() => { setEditing(false) }, [nodeId])
   const locked = !node || query.isFetching || management.state.busy || !!management.state.pending
   async function command(kind: 'show' | 'enabled' | 'machine' | 'copy' | 'delete' | 'reset') {
-    if (locked || !node || !window.confirm(t("确定对节点 {name} 执行此操作？配置以本次读取结果为准，请核对后继续。", { name: node.name }))) return
+    if (locked || !node || !(await confirm(t("确定对节点 {name} 执行此操作？配置以本次读取结果为准，请核对后继续。", { name: node.name })))) return
     const input = { node_id: node.id }
     await management.perform(() => kind === 'copy' ? workflowActions.run('network.nodes.copy', input)
       : kind === 'delete' ? workflowActions.run('network.nodes.delete', input)
@@ -99,7 +101,7 @@ export function NodeDetailPage() {
         </div>
         <h3 className="network-section-heading">{t("服务器归属")}</h3>
         <p className="network-help">{t("将节点关联到服务器，便于集中查看运行状态 · 解除绑定不会删除节点")}</p>
-        <form className="native-content-form network-binding-form" onSubmit={event => { event.preventDefault(); void command('machine') }}>
+        <form className="native-content-form network-binding-form" onSubmit={async event => { event.preventDefault(); void (await command('machine')) }}>
           <Field label={t("绑定服务器 ID")} hint={t("留空解除绑定")}>
             <Input placeholder={t("输入服务器 ID，留空解除绑定")} value={machine} pattern="[1-9][0-9]{0,18}" maxLength={19} disabled={locked} onChange={event => setMachine(event.target.value)} />
           </Field>
