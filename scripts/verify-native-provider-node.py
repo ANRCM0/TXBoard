@@ -252,7 +252,7 @@ def main(closeout=False):
             node_config = {
                 "panel": {"provider": "txboard", "url": core_origin, "node_id": fixture_state["node_id"],
                           "token": fixture_state["token"]},
-                "kernel": {"type": "singbox", "config_dir": str(root / "node-state"), "log_level": "error"},
+                "kernel": {"type": "txnode", "config_dir": str(root / "node-state"), "log_level": "error"},
                 "cert": {"cert_mode": "none"},
                 "node": {"track_interval": 1, "push_interval": 5, "pull_interval": 60},
                 "authorization": auth,
