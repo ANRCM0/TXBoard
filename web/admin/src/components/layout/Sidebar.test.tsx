@@ -22,7 +22,7 @@ function mountSidebar() {
     root.render(
       <QueryClientProvider client={queryClient}>
         <MemoryRouter>
-          <Sidebar open={false} onClose={() => {}} collapsed={false} onExpand={() => {}} />
+          <Sidebar open={false} onClose={() => {}} />
         </MemoryRouter>
       </QueryClientProvider>,
     )
@@ -59,37 +59,37 @@ describe('admin sidebar group state', () => {
   it('preserves independently collapsed groups after remounting (browser refresh)', () => {
     mountSidebar()
     expect(expanded('system')).toBe('true')
-    expect(expanded('commerce')).toBe('true')
+    expect(expanded('finance')).toBe('true')
 
     toggle('system')
-    toggle('commerce')
+    toggle('finance')
     expect(expanded('system')).toBe('false')
-    expect(expanded('commerce')).toBe('false')
-    expect(expanded('extensions')).toBe('true')
+    expect(expanded('finance')).toBe('false')
+    expect(expanded('settings')).toBe('true')
 
     act(() => root.unmount())
     mountSidebar()
     expect(expanded('system')).toBe('false')
-    expect(expanded('commerce')).toBe('false')
-    expect(expanded('extensions')).toBe('true')
+    expect(expanded('finance')).toBe('false')
+    expect(expanded('settings')).toBe('true')
 
     toggle('system')
     act(() => root.unmount())
     mountSidebar()
     expect(expanded('system')).toBe('true')
-    expect(expanded('commerce')).toBe('false')
+    expect(expanded('finance')).toBe('false')
   })
 
   it('ignores unknown keys and invalid values while restoring valid preferences', () => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({
       system: false,
-      node: 'false',
+      network: 'false',
       retired_group: false,
     }))
     mountSidebar()
 
     expect(expanded('system')).toBe('false')
-    expect(expanded('node')).toBe('true')
+    expect(expanded('network')).toBe('true')
     expect(expanded('content')).toBe('true')
     expect(JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}')).not.toHaveProperty('retired_group')
   })
@@ -108,7 +108,7 @@ describe('admin sidebar group state', () => {
     mountSidebar()
 
     expect(expanded('system')).toBe('true')
-    expect(expanded('node')).toBe('true')
+    expect(expanded('network')).toBe('true')
     expect(() => JSON.parse(localStorage.getItem(STORAGE_KEY) || '')).not.toThrow()
   })
 })
