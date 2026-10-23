@@ -103,7 +103,7 @@
   "流量": "Traffic",
   "流量重置": "Traffic Reset",
   "状态": "Status",
-  "用户": "User",
+  "用户": "Users",
   "用户流量排行": "User Traffic Rank",
   "用户管理": "User Management",
   "登录": "Sign In",
@@ -2467,5 +2467,15 @@
   "XHTTP": "XHTTP",
   "已选当前页 {count} {noun}": "Selected on this page: {count} {noun}",
   "标题在全部分页中查询；分类与发布状态只筛选当前页，不改变分页总数。当前显示 {visible} / {total} 项。": "Title search covers all pages. Category and publication status filter only the current page without changing pagination totals. Showing {visible} / {total} items.",
-  "立即起 {days} 天": "Starting now, valid for {days} days"
+  "立即起 {days} 天": "Starting now, valid for {days} days",
+  "总览": "Overview",
+  "网络": "Network",
+  "财务": "Finance",
+  "内容与支持": "Content & support",
+  "设置": "Settings",
+  "业务导航": "Main navigation",
+  "页面导航": "Page navigation",
+  "设置移动端导航抽屉的表面颜色。": "Set the surface color of the mobile navigation drawer.",
+  "运营总览": "Operations overview",
+  "掌握收入、用户与网络的日常表现。": "Track daily revenue, users and network activity."
 }

@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url'
 import { chromium } from 'playwright'
 import { coreOperations } from '@txboard/core-sdk'
 import { dashboardFixture } from './lib/admin-dashboard-fixture.mjs'
+import { navigateAdmin } from './lib/admin-navigation.mjs'
 
 const root = fileURLToPath(new URL('../', import.meta.url))
 const output = fileURLToPath(new URL('../artifacts/admin-browser/', import.meta.url))
@@ -195,8 +196,10 @@ async function login(page, target = '/admin/') {
   await page.waitForURL(url => !url.pathname.endsWith('sign-in'))
 }
 async function nav(page, name) {
-  await page.getByRole('link', { name: new RegExp('^' + name + '(?:\\s*待开放)?$') }).click()
-  const title = ({ 仪表盘: '管理中心', 系统配置: '站点设置' })[name] ?? name
+  const path = { 仪表盘: '/', 节点管理: '/server/manage', 服务器管理: '/server/machine', 系统配置: '/config/system', 登录会话: '/system/sessions', 用户管理: '/user/manage', 插件管理: '/config/plugin' }[name]
+  assert.ok(path, 'Known navigation destination')
+  await navigateAdmin(page, path, await page.locator('.admin-sidebar.is-open').count() > 0)
+  const title = ({ 仪表盘: '运营总览', 系统配置: '站点设置' })[name] ?? name
   await page.locator('.native-management-page .page-header').getByRole('heading', { name: title, exact: true }).waitFor()
 }
 try {
@@ -409,12 +412,12 @@ try {
   assert.equal(state.operations.slice(operationsBeforeModules).some(operation => coreOperations[operation].idempotency !== 'read'), false)
   passed('active plugin inventory shows its empty state without lifecycle writes or old HTTP routes')
   state.logoutFailure = true
-  assert.ok(await page.locator('.admin-sidebar-footer').evaluate(footer =>
+  assert.ok(await page.locator('.admin-topbar-tools').evaluate(footer =>
     [...footer.querySelectorAll('button, select')].every(control => {
       const bounds = control.getBoundingClientRect()
       const target = document.elementFromPoint(bounds.left + bounds.width / 2, bounds.top + bounds.height / 2)
       return bounds.width > 0 && bounds.height > 0 && target !== null && control.contains(target)
-    })), 'every sidebar footer control must receive a normal pointer at its center')
+    })), 'every header control must receive a normal pointer at its center')
   await page.getByRole('button', { name: '账户菜单', exact: true }).click()
   await page.getByRole('status').filter({ hasText: /^已进入 插件管理$/ }).waitFor()
   assert.equal(await page.getByRole('button', { name: '账户菜单', exact: true }).getAttribute('aria-expanded'), 'true')

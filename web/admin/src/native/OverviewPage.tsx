@@ -65,7 +65,7 @@ export function OverviewPage() {
     if (value !== 'custom') setDates(dashboardDates(Number(value)))
   }
   return <div className="native-management-page reference-overview native-dashboard">
-    <PageHeader title={t("管理中心")} description={t("原生订单、佣金与已结算流量")} action={<div className="overview-refresh">
+    <PageHeader title={t("运营总览")} description={t("掌握收入、用户与网络的日常表现。")} action={<div className="overview-refresh">
       <span className="overview-update">{refreshing ? t('更新中') : updatedAt ? new Date(updatedAt * 1000).toLocaleTimeString(getLocale()) + t(' 更新') : t('等待更新')}</span>
       <button className="icon-button" aria-label={t("刷新概览")} title={t("刷新概览")} disabled={!session || refreshing} onClick={() => { void Promise.allSettled([dashboard.refetch(), queue.refetch()]) }}><RefreshCw size={19} className={refreshing ? 'is-spinning' : ''} /></button>
     </div>} />

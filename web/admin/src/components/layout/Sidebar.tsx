@@ -2,8 +2,6 @@ import { t, useLocale } from '../../lib/i18n'
 import {
   ChevronDown,
   LayoutDashboard,
-  PanelLeftClose,
-  PanelLeftOpen,
   X,
 } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
@@ -20,9 +18,6 @@ const availablePaths = new Set(availableAdminPaths)
 type SidebarProps = {
   open: boolean
   onClose: () => void
-  collapsed: boolean
-  onExpand: () => void
-  onToggle?: () => void
 }
 
 const OPEN_GROUPS_STORAGE_KEY = 'txboard:admin:sidebar:open-groups'
@@ -50,7 +45,7 @@ function readOpenGroups(): Record<string, boolean> {
   return groups
 }
 
-export function Sidebar({ open, onClose, collapsed, onExpand, onToggle }: SidebarProps) {
+export function Sidebar({ open, onClose }: SidebarProps) {
   useLocale()
   const site = useSiteBranding()
   const { pathname } = useLocation()
@@ -136,7 +131,7 @@ export function Sidebar({ open, onClose, collapsed, onExpand, onToggle }: Sideba
                   aria-label={t(group.title)}
                   aria-controls={`admin-nav-${group.key}`}
                   aria-expanded={expanded}
-                  onClick={() => collapsed && !open ? onExpand() : toggleGroup(group.key)}
+                  onClick={() => toggleGroup(group.key)}
                 >
                   <GroupIcon size={18} />
                   <span>{t(group.title)}</span>
@@ -169,12 +164,6 @@ export function Sidebar({ open, onClose, collapsed, onExpand, onToggle }: Sideba
 
         </nav>
 
-        <div className="admin-sidebar-footer">
-          <button type="button" className="admin-sidebar-collapse-toggle" aria-label={t(collapsed ? t('展开侧边栏') : t('收起侧边栏'))} title={t(collapsed ? t('展开侧边栏') : t('收起侧边栏'))} aria-expanded={!collapsed} onClick={onToggle ?? onExpand}>
-            {collapsed ? <PanelLeftOpen size={19} /> : <PanelLeftClose size={19} />}
-            <span>{t(collapsed ? '展开侧边栏' : '收起侧边栏')}</span>
-          </button>
-        </div>
       </div>
     </div>
   )

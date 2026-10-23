@@ -1,7 +1,7 @@
 import { t, useLocale } from '../../lib/i18n'
 import { Suspense, useEffect, useRef, useState } from 'react'
 import { ChevronRight, Menu } from 'lucide-react'
-import { Outlet, useLocation } from 'react-router-dom'
+import { Link, Outlet, useLocation } from 'react-router-dom'
 import { Sidebar } from './Sidebar'
 import { TopBar } from './TopBar'
 import { RouteErrorBoundary } from './RouteErrorBoundary'
@@ -10,47 +10,14 @@ import { PendingWorkflowNotice } from '../../native/PendingWorkflowNotice'
 import { useSiteBranding } from '../../lib/useSiteBranding'
 import { SiteAppearanceConsumer } from '../../lib/useSiteAppearance'
 import { DirtyNavigationHost } from './DirtyNavigationHost'
-import { coreNavigationGroups } from '../../navigation/core'
-
-const SIDEBAR_EXPANDED_KEY = 'txboard:admin:sidebar:expanded'
-
-function readSidebarExpanded() {
-  try {
-    // New visitors get the readable navigation; returning visitors keep their choice.
-    return window.localStorage.getItem(SIDEBAR_EXPANDED_KEY) !== 'false'
-  } catch {
-    return true
-  }
-}
-
-const extraSections: Record<string, readonly [string, string]> = {
-  '/config/email': ['系统管理', '邮件设置'],
-  '/config/telegram': ['系统管理', 'Telegram'],
-  '/config/app': ['系统管理', 'APP 设置'],
-  '/config/appearance': ['系统管理', '管理端外观'],
-}
-
-function currentSection(pathname: string) {
-  if (pathname === '/') return { group: t('管理控制台'), page: t('仪表盘') }
-  const extra = extraSections[pathname]
-  if (extra) return { group: t(extra[0]), page: t(extra[1]) }
-  for (const group of coreNavigationGroups) {
-    for (const [path, label] of group.items) {
-      if (pathname === path || pathname.startsWith(path + '/')) {
-        return { group: t(group.title), page: t(label) }
-      }
-    }
-  }
-  if (pathname.startsWith('/server/')) return { group: t('节点管理'), page: '' }
-  if (pathname.startsWith('/user/')) return { group: t('用户管理'), page: '' }
-  return { group: t('管理控制台'), page: '' }
-}
+import { adminSection } from '../../navigation/core'
+import { HeaderNavigation } from './HeaderNavigation'
+import { SiteMark } from './SiteMark'
 
 export function AdminLayout() {
   useLocale()
-  useSiteBranding(t('管理控制台'))
+  const site = useSiteBranding(t('管理控制台'))
   const [open, setOpen] = useState(false)
-  const [expanded, setExpanded] = useState(readSidebarExpanded)
   const { pathname } = useLocation()
   const scrollRef = useRef<HTMLDivElement>(null)
   const mainRef = useRef<HTMLElement>(null)
@@ -58,12 +25,9 @@ export function AdminLayout() {
   const [announcement, setAnnouncement] = useState('')
 
   useEffect(() => {
-    try { window.localStorage.setItem(SIDEBAR_EXPANDED_KEY, String(expanded)) } catch { /* storage is optional */ }
-  }, [expanded])
-
-  useEffect(() => {
     setOpen(false)
     if (scrollRef.current) scrollRef.current.scrollTop = 0
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' })
     if (firstRoute.current) { firstRoute.current = false; return }
     mainRef.current?.focus({ preventScroll: true })
     setAnnouncement('')
@@ -100,27 +64,26 @@ export function AdminLayout() {
     return () => desktop.removeEventListener('change', closeOnDesktop)
   }, [])
 
-  const section = currentSection(pathname)
+  const section = adminSection(pathname)
 
   return (
-    <div className={`admin-shell ${expanded ? 'is-sidebar-expanded' : 'is-sidebar-collapsed'}`}>
+    <div className="admin-shell admin-monochrome is-sidebar-expanded">
       <SiteAppearanceConsumer />
       <a className="admin-skip-link" href="#admin-content">{t("跳转到主要内容")}</a>
-      <Sidebar open={open} onClose={() => setOpen(false)} collapsed={!expanded} onExpand={() => setExpanded(true)} onToggle={() => setExpanded(value => !value)} />
+      {open ? <Sidebar open onClose={() => setOpen(false)} /> : null}
       <main ref={mainRef} className="admin-main" id="admin-content" tabIndex={-1}>
         <header className="admin-topbar">
+          <Link className="admin-header-brand" to="/" aria-label={site.name}><SiteMark logo={site.logo} /><strong>{site.name}</strong></Link>
+          <HeaderNavigation />
           <button type="button" className="admin-topbar-menu" aria-label={t("打开导航")} onClick={() => setOpen(true)}>
             <Menu size={20} />
           </button>
-          <div className="admin-breadcrumb">
-            {section.page && section.page !== section.group
-              ? <><span>{section.group}</span><ChevronRight size={14} aria-hidden="true" /><strong aria-current="page">{section.page}</strong></>
-              : <strong aria-current="page">{section.page || section.group}</strong>}
-          </div>
           <TopBar onOpenMenu={() => setOpen(false)} />
         </header>
+        <div className="admin-contextbar"><div className="admin-breadcrumb"><span>{t(section.group.title)}</span><ChevronRight size={12} aria-hidden="true" /><strong aria-current="page">{t(section.item[1])}</strong></div></div>
         <div ref={scrollRef} className="admin-scroll">
           <div className='admin-page'>
+            {section.group.key !== 'overview' ? <HeaderNavigation secondary /> : null}
             <p className="admin-route-announcer" role="status" aria-live="polite">{announcement}</p>
             <PendingWorkflowNotice />
             <RouteErrorBoundary>

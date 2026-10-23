@@ -5,6 +5,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { chromium } from 'playwright'
 import { attachmentBytes, attachmentId, markup, workflowFixture } from './lib/admin-workflows-fixture.mjs'
+import { navigateAdmin } from './lib/admin-navigation.mjs'
 
 const root = fileURLToPath(new URL('../', import.meta.url))
 const output = path.join(root, 'artifacts/admin-workflows-browser')
@@ -52,12 +53,8 @@ async function login(page) {
   await page.getByRole('heading', { name: '工单管理', exact: true }).waitFor()
 }
 async function navigate(page, name, mobile = false) {
-  if (mobile) await page.getByRole('button', { name: '打开导航', exact: true }).click()
-  const link = page.getByRole('link', { name, exact: true })
-  await link.waitFor()
-  assert.doesNotMatch(await link.innerText(), /待开放/)
-  await link.click()
   const [, pathname, heading] = routes.find(row => row[0] === name)
+  await navigateAdmin(page, pathname, mobile)
   await page.waitForURL(url => url.pathname === '/admin' + pathname)
   await page.getByRole('heading', { name: heading, exact: true }).waitFor()
   assert.equal(await page.getByText('此功能暂未开放', { exact: true }).count(), 0)
@@ -73,7 +70,7 @@ try {
   fixtures.push(desktop)
   const { page, state } = desktop
   await login(page)
-  // Desktop starts with a compact rail; expand before matching navigation labels.
+  // Historical rail preferences must not affect the horizontal navigation.
   const expand = page.getByRole('button', { name: '展开侧边栏', exact: true })
   if (await expand.count()) await expand.click()
   for (const [name] of routes) await navigate(page, name)

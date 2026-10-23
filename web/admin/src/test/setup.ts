@@ -1,3 +1,10 @@
+import { transferableAbortController } from 'node:util'
+
+// React Router uses Node's Request; its signal must come from the same realm.
+const nodeController = transferableAbortController()
+Object.defineProperty(globalThis, 'AbortController', { value: nodeController.constructor, configurable: true, writable: true })
+Object.defineProperty(globalThis, 'AbortSignal', { value: nodeController.signal.constructor, configurable: true, writable: true })
+
 /**
  * Node 26 defines a `localStorage` global that shadows the jsdom implementation
  * and stays undefined unless the process is started with --localstorage-file.

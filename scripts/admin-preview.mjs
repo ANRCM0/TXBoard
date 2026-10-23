@@ -225,7 +225,7 @@ const server = await createServer({ root, configFile: root + '/vite.config.ts',
     },
     transformIndexHtml() {
       return [{ tag: 'aside', attrs: { id: 'txboard-preview-label',
-        style: 'pointer-events:none;position:fixed;right:16px;bottom:14px;z-index:2147483000;padding:10px 14px;border:1px solid #c8d5f5;border-radius:12px;background:#edf3ff;color:#253a68;font:12px/1.6 system-ui;box-shadow:0 4px 18px #10204018' },
+        style: 'pointer-events:none;position:fixed;right:16px;bottom:14px;z-index:2147483000;padding:8px 12px;border:1px solid #ddd;background:#fff;color:#454545;font:11px/1.6 sans-serif' },
       children: '<strong>测试数据 · 本地只读预览</strong><br>admin@example.test / preview123456', injectTo: 'body' }]
     },
   }],

@@ -5,6 +5,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { chromium } from 'playwright'
 import { catalogNetworkFixture } from './lib/admin-catalog-network-fixture.mjs'
+import { navigateAdmin } from './lib/admin-navigation.mjs'
 
 const root = fileURLToPath(new URL('../', import.meta.url))
 const output = path.join(root, 'artifacts/admin-catalog-network-browser')
@@ -45,10 +46,8 @@ async function login(page) {
   await page.locator('.native-management-page .page-header').getByRole('heading', { name: '套餐与发布', exact: true }).waitFor()
 }
 async function navigate(page, name, mobile = false) {
-  if (mobile) await page.getByRole('button', { name: '打开导航', exact: true }).click()
-  const link = page.getByRole('link', { name, exact: true })
-  await link.waitFor(); assert.doesNotMatch(await link.innerText(), /待开放/); await link.click()
   const [, pathname, heading] = routes.find(row => row[0] === name)
+  await navigateAdmin(page, pathname, mobile)
   await page.waitForURL(url => url.pathname === '/admin' + pathname)
   await page.locator('.native-management-page .page-header').getByRole('heading', { name: heading, exact: true }).waitFor()
 }
