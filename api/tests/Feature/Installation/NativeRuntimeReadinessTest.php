@@ -319,4 +319,39 @@ final class NativeRuntimeReadinessTest extends NativeRuntimeTestCase
         $this->expectExceptionMessage('INSTALLATION_AUTHORITY_NATIVE_JOB_UNAVAILABLE');
         $listener->jobProcessing(new JobProcessing('sync', $job));
     }
+
+    public function test_ready_native_admits_the_admin_spa_entry_and_keeps_guessed_paths_closed(): void
+    {
+        $this->activate();
+        $authority = app(InstallationAuthority::class);
+        $securePath = (string) admin_setting('secure_path',
+            admin_setting('frontend_admin_path', hash('crc32b', config('app.key'))));
+        $this->assertNotSame('', $securePath);
+
+        // The entry is delivered by the secure_path route, so admission must cover
+        // it and its sub-routes, for reads only.
+        $this->assertTrue(NativeRuntimeAdmission::adminEntry('GET', $securePath));
+        $this->assertTrue(NativeRuntimeAdmission::adminEntry('GET', $securePath.'/'));
+        $this->assertTrue(NativeRuntimeAdmission::adminEntry('GET', $securePath.'/dashboard'));
+        $this->assertTrue(NativeRuntimeAdmission::adminEntry('HEAD', $securePath));
+        $this->assertFalse(NativeRuntimeAdmission::adminEntry('POST', $securePath));
+        $this->assertFalse(NativeRuntimeAdmission::adminEntry('DELETE', $securePath.'/dashboard'));
+        $this->assertFalse(NativeRuntimeAdmission::adminEntry('GET', 'not-the-secure-path'));
+        $this->assertFalse(NativeRuntimeAdmission::adminEntry('GET', ''));
+
+        // Admission is separate from the operation inventory, so an activated
+        // configuration keeps its digest.
+        $this->assertFalse(NativeRuntimeAdmission::http('GET', $securePath));
+
+        // The entry and its sub-routes are admitted; a guessed first segment is
+        // still refused exactly like any other closed path.
+        $authority->assertHttp('GET', $securePath);
+        $authority->assertHttp('GET', $securePath.'/dashboard');
+        try {
+            $authority->assertHttp('GET', 'not-the-secure-path');
+            $this->fail('Guessed admin path was admitted');
+        } catch (InstallationAuthorityException $error) {
+            $this->assertSame('INSTALLATION_AUTHORITY_NATIVE_CAPABILITY_UNAVAILABLE', $error->getMessage());
+        }
+    }
 }

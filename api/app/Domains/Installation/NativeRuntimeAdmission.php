@@ -60,6 +60,21 @@ final class NativeRuntimeAdmission
         return false;
     }
 
+    /**
+     * The admin SPA index is delivered by the runtime secure_path route, not by an
+     * operation. It is admitted separately from the operation inventory so that
+     * adding it does not move digest() and invalidate an activated configuration.
+     * AdminPath still enforces the secure_path match and answers 404 otherwise.
+     */
+    public static function adminEntry(string $method, string $path): bool
+    {
+        if ($method !== 'GET' && $method !== 'HEAD') { return false; }
+        $segment = explode('/', ltrim($path, '/'), 2)[0];
+        $expected = trim((string) admin_setting('secure_path',
+            admin_setting('frontend_admin_path', hash('crc32b', config('app.key')))));
+        return $segment !== '' && $expected !== '' && hash_equals($expected, $segment);
+    }
+
     public static function digest(): string
     {
         return hash('sha256', json_encode([self::VERSION, self::HTTP, self::COMMANDS, self::JOBS], JSON_THROW_ON_ERROR));
