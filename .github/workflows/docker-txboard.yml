@@ -305,8 +305,11 @@ jobs:
             docker logs txboard-smoke
             exit 1
           fi
+          scheduler_status=0
           docker exec txboard-smoke supervisorctl -c /etc/supervisor/conf.d/supervisord.conf \
-            status scheduler:* | grep -q STOPPED
+            status scheduler:* >/tmp/scheduler-disabled-status.txt || scheduler_status=$?
+          test "$scheduler_status" -eq 3
+          grep -q '^scheduler:scheduler_00 *STOPPED' /tmp/scheduler-disabled-status.txt
           # Test the actual Caddy -> Octane HTTP response, not only the PHP
           # process healthcheck. These endpoints intentionally do not use DB.
           docker exec txboard-smoke php -r '
