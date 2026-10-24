@@ -435,8 +435,11 @@ def main():
                                                         stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=60)
                     require(diagnostic_process.returncode in (0, 1), "Stopped-image diagnostic helper failed unexpectedly")
                     stopped_diagnosis = json.loads(diagnostic_process.stdout)
+                    diagnostic_code = stopped_diagnosis.get("error_code", "UNEXPECTED_REPORT")
+                    if not isinstance(diagnostic_code, str) or re.fullmatch(r"[A-Z][A-Z0-9_]{1,127}", diagnostic_code) is None:
+                        diagnostic_code = "UNEXPECTED_REPORT"
                     require(stopped_diagnosis.get("schema") == "core-diagnostics/v1" and stopped_diagnosis.get("read_only") is True,
-                            "Interrupted installation did not retain controlled diagnostics")
+                            "Interrupted installation did not retain controlled diagnostics: " + diagnostic_code)
                     require(native.Journal(installation).load() == intent, "Diagnostics changed the original interrupted deployment intent")
                     require(backend.sql("SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='tx_ext_module_portal_note'") == "1", "Module-owned DDL was not durably applied")
                     recovered = json.loads(run(["bash", installation / "txboard.sh", "--dir", installation, "native", "recover"], timeout=600))
