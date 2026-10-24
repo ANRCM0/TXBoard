@@ -41,9 +41,14 @@ final class NativeGiftCardWorkflowTest extends NativeRuntimeTestCase
     {
         $this->activate(); $gifts = app(NativeGiftCards::class); $issuer = $this->workflowActor();
         $this->fundWorkflowWallet($issuer, '1000'); $this->authenticateWorkflowActor($issuer);
-        $expires = time() + 1;
+        $expires = time() + 5;
         $card = $gifts->execute($issuer->id, 'issue', ['currency' => 'CNY', 'amount_minor' => '100', 'expires_at' => $expires], $this->workflowKey());
-        usleep(2000000);
+        // The domain compares expires_at against its own time(), taken inside the
+        // call, so a fixed usleep() races with the runner: too short and the card
+        // is not yet expired, too long only wastes time. Wait until the minted
+        // expiry has actually passed.
+        $wait = $expires - time() + 1;
+        if ($wait > 0) usleep($wait * 1000000);
         $results = $gifts->expire(10);
         $this->assertSame(['scanned' => 1, 'expired' => 1, 'errors' => []], $results);
         $this->assertSame(['scanned' => 0, 'expired' => 0, 'errors' => []], $gifts->expire(10));
