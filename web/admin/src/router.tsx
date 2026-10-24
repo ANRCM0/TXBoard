@@ -1,9 +1,9 @@
 import { lazy } from 'react'
 import { Navigate, createBrowserRouter } from 'react-router-dom'
 import { resolveBasePath } from './lib/basePath'
-import { AdminLayout } from './components/layout/AdminLayout'
 import { AuthGuard } from './components/layout/AuthGuard'
 
+const AdminLayout = lazy(() => import('./components/layout/AdminLayout').then(m => ({ default: m.AdminLayout })))
 const SignIn = lazy(() => import('./pages/SignInPage').then(m => ({ default: m.SignInPage })))
 const Overview = lazy(() => import('./native/OverviewPage').then(m => ({ default: m.OverviewPage })))
 const Nodes = lazy(() => import('./native/NodesPage').then(m => ({ default: m.NodesPage })))

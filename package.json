@@ -32,5 +32,8 @@
     "@types/node": "22.19.0",
     "playwright": "1.64.0",
     "typescript": "5.9.3"
+  },
+  "overrides": {
+    "dompurify": "3.4.17"
   }
 }

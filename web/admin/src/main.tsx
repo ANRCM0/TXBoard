@@ -35,7 +35,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
       <React.Suspense
         fallback={<RouteLoading />}
       >
-        <RouterProvider router={router} future={{ v7_startTransition: true }} />
+        <RouterProvider router={router} />
       </React.Suspense>
       <Toaster richColors position="top-right" />
     </QueryClientProvider>

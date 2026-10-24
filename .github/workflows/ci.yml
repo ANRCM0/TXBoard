@@ -91,6 +91,18 @@ jobs:
           coverage: none
       - name: Install dependencies
         run: composer install --no-interaction --prefer-dist
+      - name: Audit locked PHP dependencies
+        timeout-minutes: 5
+        run: |
+          mkdir -p artifacts/security
+          composer audit --locked --format=json > artifacts/security/composer-audit.json
+      - name: Preserve PHP dependency audit
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: php-dependency-audit-${{ github.sha }}
+          path: api/artifacts/security/composer-audit.json
+          if-no-files-found: warn
       - name: Prepare test environment
         run: |
           cp .env.example .env
@@ -725,6 +737,11 @@ jobs:
           cache: npm
           cache-dependency-path: package-lock.json
       - run: npm ci --no-audit --no-fund
+      - name: Audit locked JavaScript dependencies
+        timeout-minutes: 5
+        run: |
+          mkdir -p artifacts/security
+          npm audit --package-lock-only --ignore-scripts --audit-level=high --json > artifacts/security/npm-audit.json
       - run: npm run verify:web
       - run: npx playwright install --with-deps chromium
       - name: Verify actual management development server in Chromium
@@ -744,6 +761,7 @@ jobs:
             artifacts/user-browser/
             artifacts/admin-native-wave/code-editor-browser-result.json
             artifacts/admin-native-wave/subscription-template-editor-*.png
+            artifacts/security/npm-audit.json
           if-no-files-found: ignore
 
   browser-native-http:
