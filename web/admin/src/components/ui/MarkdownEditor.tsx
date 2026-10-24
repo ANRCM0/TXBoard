@@ -6,6 +6,16 @@ import './markdown-editor.css'
 
 // Content remains Markdown source; raw HTML is escaped in the local preview.
 const parser = new MarkdownIt({ html: false, linkify: true, breaks: true })
+const renderImage = parser.renderer.rules.image!
+parser.renderer.rules.image = (tokens, index, options, environment, renderer) => {
+  tokens[index].attrSet('referrerpolicy', 'no-referrer')
+  return renderImage(tokens, index, options, environment, renderer)
+}
+parser.renderer.rules.link_open = (tokens, index, options, _environment, renderer) => {
+  tokens[index].attrSet('referrerpolicy', 'no-referrer')
+  tokens[index].attrSet('rel', 'noreferrer noopener')
+  return renderer.renderToken(tokens, index, options)
+}
 const formats = [
   { label: '二级标题', icon: Heading2, before: '## ', after: '', sample: '标题', block: true },
   { label: '加粗', icon: Bold, before: '**', after: '**', sample: '加粗文字' },

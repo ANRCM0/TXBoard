@@ -45,6 +45,15 @@ controlled deployment/runtime flow; these pages do not create a generic mutation
 or archive upload proxy. Queue views expose bounded metadata, not job payloads or
 raw exception messages. External commission payout remains outside this scope.
 
+## Audit search privacy
+
+`audit.logs.list` keyword search matches administrator email, HTTP method and
+source IP. It never searches raw historical URIs or request payloads: even a
+redacted response would expose matching private values through pagination counts.
+Use the separate exact `action` filter for normalized operation names. Legacy
+action names containing administrator paths are not searchable and yield no
+matches. Historical response redaction and the `audit.read` grant still apply.
+
 ## Settings and payment configuration
 
 `settings.configuration.get` returns a fresh native settings view, an opaque

@@ -40,6 +40,15 @@ it('formats the selection without submitting a form and keeps source through vie
   act(() => button('编辑').click())
   expect(textarea.value).toBe('hello **world**')
 })
+it('does not send the private administrator URL as a Markdown image or link referrer', () => {
+  render('![status](https://images.example.test/status.png)\n\n[Help](https://docs.example.test/help)')
+  act(() => button('预览').click())
+  const preview = host.querySelector('[aria-label="正文预览"]')!
+  expect(preview.querySelector('img')?.getAttribute('referrerpolicy')).toBe('no-referrer')
+  expect(preview.querySelector('img')?.getAttribute('src')).toBe('https://images.example.test/status.png')
+  expect(preview.querySelector('a')?.getAttribute('referrerpolicy')).toBe('no-referrer')
+  expect(preview.querySelector('a')?.getAttribute('rel')).toContain('noreferrer')
+})
 it('retains preview access while disabling formatting and input for a locked write', () => {
   render('read only', true)
   expect(host.querySelector('textarea')?.disabled).toBe(true)

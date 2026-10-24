@@ -26,8 +26,9 @@ final class AdminAuditSanitizer
 
     public static function safeAction(string $action, string $uri): string
     {
-        if (str_starts_with($action, 'txapi_admin_') ||
-            str_starts_with($action, 'api_tx_')) {
+        $normalized = strtolower($action);
+        if (str_starts_with($normalized, 'txapi_admin_') ||
+            str_starts_with($normalized, 'api_tx_')) {
             $path = self::safeUri($uri);
             $path = preg_replace('~^/(txapi/admin|api/v2)/\{admin_path\}/?~', '', $path);
             if (is_string($path) && $path !== '' && $path !== '[REDACTED]') {
