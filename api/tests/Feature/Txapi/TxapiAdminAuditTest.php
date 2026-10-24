@@ -136,8 +136,9 @@ class TxapiAdminAuditTest extends TestCase
             $this->getJson($url.'?'.http_build_query(['keyword' => $keyword]))
                 ->assertOk()->assertJsonPath('meta.total', 0)->assertJsonPath('data', []);
         }
-        // Case-insensitive SQL collations must not restore the action oracle.
-        foreach ([$action, strtoupper($action), 'api_tx_rotated-private-entry_config.save'] as $unsafe) {
+        // Case/accent-insensitive SQL collations must not restore the action oracle.
+        foreach ([$action, strtoupper($action), str_replace('txapi_admin_', 'txápì_ádmìn_', $action),
+            'api_tx_rotated-private-entry_config.save'] as $unsafe) {
             $this->getJson($url.'?'.http_build_query(['action' => $unsafe]))
                 ->assertOk()->assertJsonPath('meta.total', 0)->assertJsonPath('data', []);
         }

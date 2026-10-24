@@ -28,7 +28,8 @@ final class AuditLogController
         if (!empty($params['action'])) {
             // Historical action names can embed a rotated administrator path.
             // Filtering them would disclose it through pagination counts.
-            if (AdminAuditSanitizer::safeAction(strtolower($params['action']), '') === '[REDACTED]') {
+            if (!preg_match('/\A[A-Za-z0-9_.-]+\z/D', $params['action'])
+                || AdminAuditSanitizer::safeAction($params['action'], '') === '[REDACTED]') {
                 $query->whereRaw('1 = 0');
             } else {
                 $query->where('action', $params['action']);
