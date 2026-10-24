@@ -7,6 +7,7 @@ import { CoreAdminApiError } from '@txboard/core-sdk'
 import { UsersPage } from '../pages/users/UsersPage'
 import { OrdersPage } from '../pages/finance/OrdersPage'
 import { NodesPage } from './NodesPage'
+import { MachinesPage } from './MachinesPage'
 import { admin, workflowActions } from './session'
 
 vi.mock('./session', async () => {
@@ -28,9 +29,9 @@ beforeEach(() => {
 afterEach(() => { act(() => root.unmount()); client.clear(); host.remove(); workflowActions.reset() })
 function Location() { return <output data-location>{useLocation().search}</output> }
 async function settle() { await act(async () => { await new Promise(resolve => setTimeout(resolve, 20)) }) }
-async function render(kind: 'users' | 'orders' | 'nodes', url = '/') {
+async function render(kind: 'users' | 'orders' | 'nodes' | 'machines', url = '/') {
   await act(async () => root.render(<QueryClientProvider client={client}><MemoryRouter initialEntries={[url]}>
-    <Location />{kind === 'users' ? <UsersPage /> : kind === 'orders' ? <OrdersPage /> : <NodesPage />}
+    <Location />{kind === 'users' ? <UsersPage /> : kind === 'orders' ? <OrdersPage /> : kind === 'nodes' ? <NodesPage /> : <MachinesPage />}
   </MemoryRouter></QueryClientProvider>)); await settle()
 }
 async function resize(size: string) {
@@ -68,6 +69,7 @@ it.each(['users', 'orders'] as const)('withdraws cached %s totals after command 
   }); await settle()
   expect(host.textContent).not.toContain('共 401 项')
   expect(host.textContent).not.toContain(account.email)
+  expect(host.querySelector('.ui-empty')).toBeNull()
   expect(host.querySelector<HTMLSelectElement>('[aria-label="每页显示条数"]')!.disabled).toBe(true)
   const refresh = [...host.querySelectorAll<HTMLButtonElement>('.page-header button')].find(button => button.textContent === '刷新')!
   await act(async () => refresh.click()); await settle()
@@ -155,4 +157,68 @@ it('uses one user card list and one pagination control at phone width', async ()
     expect(host.querySelectorAll('[aria-label="查看 private@example.test 详情"]')).toHaveLength(1)
     expect(host.querySelector('.ui-mobile-record')!.textContent).toContain('站点账户')
   } finally { window.matchMedia = previous }
+})
+
+it.each(['users', 'orders'] as const)('recovers invalid %s queries without dropping page size or unrelated URL state', async kind => {
+  vi.mocked(admin.read).mockResolvedValue({ data: [], meta: { total: 0, last_page: 1 } } as never)
+  await render(kind, '/?page=3&per_page=50&lang=ru&filters=invalid&' + (kind === 'users' ? 'banned=invalid' : 'user_id=invalid'))
+  expect(admin.read).not.toHaveBeenCalled()
+  const clear = host.querySelector<HTMLButtonElement>('[role="alert"] button')!
+  await act(async () => clear.click()); await settle()
+  const params = new URLSearchParams(host.querySelector('[data-location]')!.textContent!)
+  expect([...params.entries()]).toEqual([['per_page', '50'], ['lang', 'ru']])
+  expect(admin.read).toHaveBeenLastCalledWith(kind === 'users' ? 'identity.accounts.list' : 'commerce.admin-orders.list',
+    { page: 1, per_page: 50 }, expect.any(AbortSignal))
+  expect(host.querySelector('.ui-empty')?.textContent).toContain(kind === 'users' ? '还没有用户' : '还没有订单')
+  expect(admin.write).not.toHaveBeenCalled()
+})
+
+it.each(['users', 'orders'] as const)('returns from an empty %s page without removing active filters', async kind => {
+  vi.mocked(admin.read).mockResolvedValue({ data: [], meta: { total: 1, last_page: 1 } } as never)
+  const filter = kind === 'users' ? 'banned=0' : 'status=0'
+  await render(kind, '/?page=3&per_page=50&' + filter)
+  expect(host.querySelector('.ui-empty')?.textContent).toContain('当前页已无数据')
+  await act(async () => host.querySelector<HTMLButtonElement>('.ui-empty button')!.click()); await settle()
+  const params = new URLSearchParams(host.querySelector('[data-location]')!.textContent!)
+  expect(params.get('page')).toBe('1')
+  expect(params.get(kind === 'users' ? 'banned' : 'status')).toBe('0')
+  expect(params.get('per_page')).toBe('50')
+  expect(host.querySelector('.ui-empty')?.textContent).toContain('没有找到匹配结果')
+})
+
+it.each(['users', 'orders'] as const)('clears advanced %s filters from the no-results action', async kind => {
+  vi.mocked(admin.read).mockResolvedValue({ data: [], meta: { total: 0, last_page: 1 } } as never)
+  const filters = encodeURIComponent(JSON.stringify([{ field: 'id', operator: 'eq', value: '7' }]))
+  await render(kind, '/?per_page=50&lang=en&filters=' + filters)
+  expect(host.querySelector('.ui-empty')?.textContent).toContain('没有找到匹配结果')
+  await act(async () => host.querySelector<HTMLButtonElement>('.ui-empty button')!.click()); await settle()
+  const params = new URLSearchParams(host.querySelector('[data-location]')!.textContent!)
+  expect(params.get('filters')).toBeNull()
+  expect(params.get('per_page')).toBe('50')
+  expect(params.get('lang')).toBe('en')
+  expect(admin.read).toHaveBeenLastCalledWith(kind === 'users' ? 'identity.accounts.list' : 'commerce.admin-orders.list',
+    { page: 1, per_page: 50 }, expect.any(AbortSignal))
+})
+
+it.each(['nodes', 'machines'] as const)('explains page-local %s filtering and restores rows without a command', async kind => {
+  const node = { id: '7', name: 'visible-node', type: 'vless', host: 'example.test', port: 443, enabled: true, show: true, machine_id: null, u: '0', d: '0' }
+  const machine = { id: '7', name: 'visible-machine', is_active: true, image_channel: 'stable', servers_count: 0, last_seen_at: null }
+  vi.mocked(admin.read).mockImplementation(async operation => operation === 'network.machines.overview.get'
+    ? { data: { total: 401, enabled: 401, online: 0, high_load: 0, unknown_load: 401, freshness_seconds: 60, high_load_threshold_percent: 90 } } as never
+    : { data: [kind === 'nodes' ? node : machine], meta: { total: 401, last_page: 21 } } as never)
+  await render(kind)
+  const reads = vi.mocked(admin.read).mock.calls.length
+  await act(async () => {
+    const search = host.querySelector<HTMLInputElement>('[aria-label="搜索当前页"]')!
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(search, 'not-found')
+    search.dispatchEvent(new Event('input', { bubbles: true }))
+  }); await settle()
+  expect(host.querySelector('.ui-empty')?.textContent).toContain('当前页没有匹配项')
+  expect(host.textContent).toContain('当前页显示 0 / 1 条，列表共 401 条')
+  await act(async () => host.querySelector<HTMLButtonElement>('.ui-empty button')!.click()); await settle()
+  expect(host.querySelector('.ui-empty')).toBeNull()
+  expect(host.textContent).toContain(kind === 'nodes' ? node.name : machine.name)
+  expect(host.textContent).toContain('当前页显示 1 / 1 条，列表共 401 条')
+  expect(admin.read).toHaveBeenCalledTimes(reads)
+  expect(admin.write).not.toHaveBeenCalled()
 })

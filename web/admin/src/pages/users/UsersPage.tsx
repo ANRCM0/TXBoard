@@ -14,6 +14,7 @@ import { admin, workflowActions } from '../../native/session'
 import { managementError } from '../../native/Feedback'
 import { NetworkRecovery, useNetworkManagement } from '../../native/NetworkManagement'
 import { ReadList } from '../../native/ReadList'
+import { ListEmptyState } from '../../native/ListEmptyState'
 import { readPage, unixDate } from '../../native/readPresentation'
 import { PageHeader } from '../../components/ui/PageHeader'
 import { Modal } from '../../components/ui/Modal'
@@ -129,6 +130,10 @@ export function UsersPage() {
   function removeFilter(key: string) {
     setParams(current => { const next = new URLSearchParams(current); next.delete(key); next.delete('page'); return next })
   }
+  function clearFilters() {
+    setEmail(''); setBanned('')
+    setParams(current => { const next = new URLSearchParams(current); ['page', 'email', 'banned', 'filters', 'sort_by', 'sort_direction'].forEach(key => next.delete(key)); return next })
+  }
   function openCreate() {
     setNewEmail(''); setNewPassword(''); setCreateError(''); setCreating(true)
   }
@@ -170,17 +175,20 @@ export function UsersPage() {
     {subscriptionRecovery.pending && subscriptionRecovery.pending.operation !== 'subscription.lifecycle.reset'
       ? <NetworkRecovery management={subscriptionRecovery} blocked={query.isFetching || query.isError || !query.data} />
       : null}
-    {!valid ? <p role="alert">{t("筛选参数有误，请清除筛选后重试。")}</p> : null}
+    {!valid ? <p role="alert">{t("筛选参数有误，请清除筛选后重试。")} <button type="button" className="button" onClick={clearFilters}>{t('清除全部筛选')}</button></p> : null}
     <ReadList title="用户列表" rows={data?.data ?? []} columns={columns} meta={data?.meta} perPage={perPage} onPageSize={resize} page={page}
       ready={!!data} loading={query.isFetching} error={query.isError ? query.error : undefined}
       onRetry={() => void recovery.refresh()} onPage={paginate}
+      emptyState={<ListEmptyState filtered={!!appliedEmail || appliedBanned !== '' || advanced.filters.length > 0} page={page} total={data?.meta.total ?? 0}
+        title={t('还没有用户')} description={t('创建首位用户后，可在这里管理账户状态与订阅。')} onClear={clearFilters} onFirstPage={() => paginate(1)}
+        createAction={<button type="button" className="button primary" disabled={locked} onClick={openCreate}>{t('新建用户')}</button>} />}
       columnSettingsKey="users" stickyHeader stickyFirstColumn mobilePrimaryKey="email">
       <header className="reference-user-list-heading"><div><h2>{t("用户列表")}</h2><p>{t("按邮箱精确定位，或筛选账户状态")}</p></div>{data ? <Tag>{t('{count} 位用户', { count: formatNumber(data.meta.total) })}</Tag> : null}</header>
       <form className="management-filter-form" onSubmit={apply}>
         <FilterBar applied={[
           ...(appliedEmail ? [{ key: 'email', label: t('邮箱 {email}', { email: appliedEmail }) }] : []),
           ...(appliedBanned ? [{ key: 'banned', label: appliedBanned === '1' ? t("已封禁") : t("正常账户") }] : []),
-        ]} onRemove={removeFilter} hint={t("按邮箱精确匹配账户，筛选结果在所有分页中生效")} onClear={() => { setEmail(''); setBanned(''); setParams(perPage !== 20 ? { per_page: String(perPage) } : {}) }}>
+        ]} onRemove={removeFilter} hint={t("按邮箱精确匹配账户，筛选结果在所有分页中生效")} onClear={clearFilters}>
           <label>{t("邮箱精确查询")}<Input aria-label={t("用户邮箱")} value={email} maxLength={254} type="email"
             onChange={event => setEmail(event.target.value)} placeholder="user@example.com" /></label>
           <FacetedFilter label={t("账户状态")} multiple={false} value={banned ? [banned] : []} onChange={next => setBanned(next[0] ?? '')}
