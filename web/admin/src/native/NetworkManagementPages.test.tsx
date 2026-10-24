@@ -232,8 +232,10 @@ it('filters current-page nodes by protocol and deployment and clears hidden sele
   expect(host.querySelector<HTMLInputElement>('input[aria-label="选择 machine-node"]')!.checked).toBe(false)
   const deployment = host.querySelector<HTMLSelectElement>('select[aria-label="部署归属"]')!
   await act(async () => { deployment.value = 'standalone'; deployment.dispatchEvent(new Event('change', { bubbles: true })) }); await settle()
-  expect(host.querySelector('tbody')!.textContent).not.toContain('machine-node')
-  expect(host.querySelector('tbody')!.textContent).not.toContain('private-node')
+  expect(host.querySelector('.ui-empty')?.textContent).toContain('当前页没有匹配项')
+  expect(host.querySelectorAll('tbody tr')).toHaveLength(0)
+  expect(host.querySelector('input[aria-label="选择 machine-node"]')).toBeNull()
+  expect(host.querySelector('input[aria-label="选择 private-node"]')).toBeNull()
   expect(admin.write).not.toHaveBeenCalled()
 })
 

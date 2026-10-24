@@ -9,6 +9,7 @@ import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { NetworkEndpoint, NetworkTrafficSplit } from './NetworkValues'
 import { ReadList } from './ReadList'
+import { ListEmptyState } from './ListEmptyState'
 import { PageHeader } from '../components/ui/PageHeader'
 import { ManagementFeedback } from './Feedback'
 import { NetworkRecovery, useNetworkManagement } from './NetworkManagement'
@@ -252,6 +253,9 @@ export function NodesPage() {
     <ReadList<Node> title={"节点列表"} rows={rows} columns={renderedColumns} perPage={perPage} onPageSize={size => { setPerPage(size); setSelected(new Set()); }} page={page} meta={query.data?.meta} ready={!!query.data && !management.denied}
       loading={query.isFetching} error={query.error} onRetry={() => void management.refresh()}
       onPage={next => { setPage(next); setSearch(''); setSelected(new Set()) }}
+      emptyState={<ListEmptyState filtered={applied.length > 0} scope={search.trim() || status || protocol || deployment || visibility ? 'page' : 'all'} page={page} total={query.data?.meta.total ?? 0}
+        title={t('还没有节点')} description={t('创建节点并配置连接信息后，可在这里管理状态与服务器归属。')} onClear={clearFilters} onFirstPage={() => { setPage(1); setSelected(new Set()) }}
+        createAction={<button type="button" className="button primary" disabled={locked} onClick={() => setEditorId(null)}>{t('创建节点')}</button>} />}
       columnSettingsKey="nodes" stickyHeader stickyFirstColumn
       selection={{ selected, onChange: setSelected, getKey: node => node.id, getLabel: node => node.name, disabled: locked }}>
       <FilterBar applied={applied} onClear={clearFilters} hint={t("搜索与状态仅筛选当前页 · 批量操作只作用于当前页选中节点")}>
@@ -264,6 +268,7 @@ export function NodesPage() {
         <label>{t("部署归属")}<Select aria-label={t("部署归属")} value={deployment} onChange={event => { setDeployment(event.target.value); setSelected(new Set()) }}><option value="">{t("全部归属")}</option><option value="standalone">{t("独立部署 / 未绑定")}</option>{[...new Set((management.denied || query.isError ? [] : query.data?.data ?? []).map(node => node.machine_id).filter((value): value is string => !!value))].map(value => <option key={value} value={value}>{t("服务器 #")}{value}</option>)}</Select></label>
         <label>{t("订阅展示")}<Select aria-label={t("订阅展示")} value={visibility} onChange={event => { setVisibility(event.target.value); setSelected(new Set()) }}><option value="">{t("显示与隐藏")}</option><option value="true">{t("显示")}</option><option value="false">{t("隐藏")}</option></Select></label>
       </FilterBar>
+      {!management.denied && !query.isError && query.data ? <p className="ui-filter-hint" role="status">{t('当前页显示 {visible} / {loaded} 条，列表共 {total} 条', { visible: rows.length, loaded: query.data.data.length, total: query.data.meta.total })}</p> : null}
       <p className="network-counter-note">{t("累计上传 / 下载为节点原始字节计数；悬停流量可查看精确字节值。")}</p>
       <BulkActionBar count={selectedRows.length} onClear={() => setSelected(new Set())}>
         <button type="button" className="button" disabled={locked} onClick={() => void batchUpdate({ enabled: true })}><Power size={14} aria-hidden="true" />{t("批量启用")}</button>

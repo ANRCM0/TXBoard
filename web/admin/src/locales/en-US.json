@@ -2511,5 +2511,22 @@
   "同步与上报": "Synchronization and reporting",
   "机器人连接": "Bot connection",
   "回调地址": "Webhook address",
-  "讨论群": "Discussion group"
+  "讨论群": "Discussion group",
+  "当前页已无数据": "No data on this page",
+  "数据可能已变更，返回第一页查看最新列表。": "Records may have changed. Return to the first page to see the latest list.",
+  "返回第一页": "Return to first page",
+  "当前页没有匹配项": "No matches on this page",
+  "没有找到匹配结果": "No matching results",
+  "筛选仅作用于当前页，可清除筛选或切换分页继续查找。": "Filters apply to this page only. Clear them or browse other pages to keep looking.",
+  "请调整查询条件，或清除全部筛选重新查看。": "Adjust your search or clear all filters to view the list again.",
+  "清除全部筛选": "Clear all filters",
+  "还没有用户": "No users yet",
+  "创建首位用户后，可在这里管理账户状态与订阅。": "Create your first user to manage account status and subscriptions here.",
+  "还没有订单": "No orders yet",
+  "用户提交购买订单后，记录会出现在这里，可查看支付与履约进度。": "Orders appear here when users make a purchase. Open an order to track payment and fulfillment.",
+  "还没有节点": "No nodes yet",
+  "创建节点并配置连接信息后，可在这里管理状态与服务器归属。": "Create a node and configure its connection, then manage its status and server assignment here.",
+  "还没有服务器": "No servers yet",
+  "创建服务器后，进入详情获取部署认证并绑定节点。": "Create a server, then open its details to get deployment credentials and assign nodes.",
+  "当前页显示 {visible} / {loaded} 条，列表共 {total} 条": "This page shows {visible} of {loaded} loaded records; {total} records in the list"
 }
