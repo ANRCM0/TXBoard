@@ -28,7 +28,7 @@ done
 # services disabled, and prove an OOM refusal retains queued work.
 docker run --rm --network none --memory 512m \
   -e ENABLE_CADDY=false -e ENABLE_WEB=false -e ENABLE_HORIZON=false \
-  -e ENABLE_WS_SERVER=false -e ENABLE_REDIS=true -e REDIS_MAXMEMORY_MIB=16 \
+  -e ENABLE_WS_SERVER=false -e ENABLE_SCHEDULER=false -e ENABLE_REDIS=true -e REDIS_MAXMEMORY_MIB=16 \
   "$image" sh -c '
     set -e
     /usr/bin/supervisord -c /etc/supervisor/conf.d/supervisord.conf >/tmp/resource-supervisor.log 2>&1 &

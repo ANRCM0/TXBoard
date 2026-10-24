@@ -25,6 +25,7 @@ on:
       - "backup.sh"
       - "scripts/test-backup.sh"
       - "scripts/test-core-resource-budget.sh"
+      - "scripts/test-runtime-supervision.sh"
       - "scripts/ci-release-recovery.sh"
       - "scripts/resolve-image-tags.sh"
       - "scripts/test-image-tags.sh"
@@ -51,6 +52,7 @@ on:
       - "backup.sh"
       - "scripts/test-backup.sh"
       - "scripts/test-core-resource-budget.sh"
+      - "scripts/test-runtime-supervision.sh"
       - "scripts/ci-release-recovery.sh"
       - "scripts/resolve-image-tags.sh"
       - "scripts/test-image-tags.sh"
@@ -220,6 +222,8 @@ jobs:
           provenance: false
       - name: Verify Core Redis budget and no-eviction behavior
         run: bash scripts/test-core-resource-budget.sh txboard-ci:pr
+      - name: Verify application startup waits for embedded Redis
+        run: bash scripts/test-runtime-supervision.sh txboard-ci:pr
       - name: Verify runtime healthcheck is embedded in image
         run: |
           docker run --rm --entrypoint sh txboard-ci:pr -c \
@@ -287,6 +291,7 @@ jobs:
             -e DB_DATABASE=/tmp/txboard-smoke.sqlite \
             -e ENABLE_HORIZON=false \
             -e ENABLE_WS_SERVER=false \
+            -e ENABLE_SCHEDULER=false \
             txboard-ci:pr
           ok=0
           for i in {1..30}; do
@@ -300,6 +305,8 @@ jobs:
             docker logs txboard-smoke
             exit 1
           fi
+          docker exec txboard-smoke supervisorctl -c /etc/supervisor/conf.d/supervisord.conf \
+            status scheduler:* | grep -q STOPPED
           # Test the actual Caddy -> Octane HTTP response, not only the PHP
           # process healthcheck. These endpoints intentionally do not use DB.
           docker exec txboard-smoke php -r '

@@ -28,4 +28,13 @@ if (!is_string($statusLine) || !preg_match('/^HTTP\/\d(?:\.\d)?\s+200\b/', $stat
     exit(1);
 }
 
+if (getenv('ENABLE_SCHEDULER') !== 'false') {
+    $output = [];
+    $status = 1;
+    exec('/usr/bin/supervisorctl -c /etc/supervisor/conf.d/supervisord.conf status scheduler:* 2>/dev/null', $output, $status);
+    if ($status !== 0 || count($output) !== 1 || !preg_match('/\bscheduler_00\s+RUNNING\b/', $output[0])) {
+        exit(1);
+    }
+}
+
 exit(0);
