@@ -214,7 +214,8 @@ class InstallationAuthority implements \App\Domains\Installation\Contracts\Insta
     {
         if ($this->inspect()['mode'] !== 'native') { $this->assertRuntime(); return; }
         $this->assertNativeRuntime();
-        $this->require(NativeRuntimeAdmission::http($method, $path), 'NATIVE_CAPABILITY_UNAVAILABLE');
+        $this->require(NativeRuntimeAdmission::http($method, $path)
+            || NativeRuntimeAdmission::adminEntry($method, $path), 'NATIVE_CAPABILITY_UNAVAILABLE');
     }
 
     public function assertCatalogMutation(): void
