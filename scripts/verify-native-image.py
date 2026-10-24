@@ -350,6 +350,8 @@ def main():
                     "Installed immutable image diagnostics failed")
             require(diagnosis["sections"]["administrator_entry"]["data"]["path"] == "[redacted]",
                     "Default image diagnostics disclosed the administrator entry")
+            managed_diagnosis = json.loads(run(["bash", installation / "txboard.sh", "--dir", installation, "core-diagnose"]))
+            require(managed_diagnosis == diagnosis, "Deployed manager did not preserve the exact Core diagnostic report")
             require(first["ready"] is True and first["authority_epoch"] == "2", "Fresh native installation was not activated")
             require(backend.container(healthy=True)["image"] == baseline, "Installed image differs from immutable input")
             resource_evidence, backup_evidence = [], []
@@ -429,6 +431,13 @@ def main():
                     intent = native.Journal(installation).load()
                     recovered_operation = intent["operation_id"]
                     require(intent["stage"] == "native_prepared" and not backend.container()["running"], "Interrupted deployment did not preserve stopped writers")
+                    diagnostic_process = subprocess.run(["bash", str(installation / "txboard.sh"), "--dir", str(installation), "core-diagnose"],
+                                                        stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=60)
+                    require(diagnostic_process.returncode in (0, 1), "Stopped-image diagnostic helper failed unexpectedly")
+                    stopped_diagnosis = json.loads(diagnostic_process.stdout)
+                    require(stopped_diagnosis.get("schema") == "core-diagnostics/v1" and stopped_diagnosis.get("read_only") is True,
+                            "Interrupted installation did not retain controlled diagnostics")
+                    require(native.Journal(installation).load() == intent, "Diagnostics changed the original interrupted deployment intent")
                     require(backend.sql("SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='tx_ext_module_portal_note'") == "1", "Module-owned DDL was not durably applied")
                     recovered = json.loads(run(["bash", installation / "txboard.sh", "--dir", installation, "native", "recover"], timeout=600))
                     require(recovered["operation_id"] == recovered_operation and recovered["stage"] == "completed", "Recovery replaced the original intent")
