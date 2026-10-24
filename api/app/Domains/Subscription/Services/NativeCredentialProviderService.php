@@ -58,6 +58,21 @@ final class NativeCredentialProviderService
         }, 3);
     }
 
+    /** Bounded, verified registration metadata; never probes or changes a Provider. */
+    public function diagnosticRegistrations(): array
+    {
+        $installation = app(InstallationAuthority::class)->inspect();
+        if ($installation['installation_id'] === null) { return []; }
+        $rows = DB::table(self::REGISTRATIONS)->orderBy('id')->limit(101)->get();
+        $this->require($rows->count() <= 100, 'REGISTRATION_LIMIT');
+        $result = [];
+        foreach ($rows as $row) {
+            $this->verifyRegistration($row, $installation['installation_id']);
+            $result[] = $this->publicRegistration($row);
+        }
+        return $result;
+    }
+
     public function issue(int $userId, int $subscriptionId, string $providerId, string $profile,
         string $businessKey, int|string $expectedVersion): array
     {

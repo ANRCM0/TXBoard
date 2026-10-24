@@ -344,6 +344,12 @@ def main():
             run(["bash", args.deploy_root / "install.sh", "--yes"], env=env, timeout=900)
             backend = native.Docker(installation)
             first = backend.report("core:installation", "runtime", running=True)
+            diagnosis = backend.report("core:diagnose", "--json", running=True)
+            require(diagnosis.get("schema") == "core-diagnostics/v1" and diagnosis.get("healthy") is True
+                    and diagnosis.get("read_only") is True and diagnosis.get("external_services_probed") is False,
+                    "Installed immutable image diagnostics failed")
+            require(diagnosis["sections"]["administrator_entry"]["data"]["path"] == "[redacted]",
+                    "Default image diagnostics disclosed the administrator entry")
             require(first["ready"] is True and first["authority_epoch"] == "2", "Fresh native installation was not activated")
             require(backend.container(healthy=True)["image"] == baseline, "Installed image differs from immutable input")
             resource_evidence, backup_evidence = [], []
@@ -427,6 +433,9 @@ def main():
                     recovered = json.loads(run(["bash", installation / "txboard.sh", "--dir", installation, "native", "recover"], timeout=600))
                     require(recovered["operation_id"] == recovered_operation and recovered["stage"] == "completed", "Recovery replaced the original intent")
                 report = backend.report("core:installation", "runtime", running=True)
+                diagnosis = backend.report("core:diagnose", "--json", running=True)
+                require(diagnosis.get("healthy") is True and diagnosis["sections"]["runtime"]["data"]["authority_epoch"] == "2",
+                        "Updated image diagnostics did not retain active runtime authority")
                 reports.append(report)
                 require(backend.container(healthy=True)["image"] == image and report["authority_epoch"] == "2", "New image/epoch readiness mismatch")
                 if args.verify_resource_profile:

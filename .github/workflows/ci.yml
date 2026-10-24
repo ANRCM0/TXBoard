@@ -584,6 +584,7 @@ jobs:
               tests/Feature/Subscription/NativeRuntimeCommerceTest.php
               tests/Feature/Subscription/NativeIdentityAndCatalogTest.php
               tests/Feature/Installation/NativeRuntimeReadinessTest.php
+              tests/Feature/Installation/CoreDiagnoseTest.php
               tests/Feature/Installation/InstallationRuntimeTest.php
           - shard: catalog-publications
             run_usage_concurrency: false
