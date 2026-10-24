@@ -33,7 +33,11 @@ RUN npm run build:sdk && \
 
 # One production image for the entire TXBoard control plane:
 # Caddy + Admin/User SPAs + Octane + Horizon + Redis + WebSocket server
-FROM phpswoole/swoole:6.2.2-php8.2-alpine
+# 6.2.3-php8.2-alpine carries PHP 8.2.35, which fixes CVE-2026-109618 and
+# CVE-2026-109619 (unauthenticated RCE, "php2shell"). The previously pinned
+# 6.2.2-php8.2-alpine is frozen at PHP 8.2.32 — rebuilding that tag does not
+# pick up the fix, the tag itself must move.
+FROM phpswoole/swoole:6.2.3-php8.2-alpine
 
 COPY --from=mlocati/php-extension-installer /usr/bin/install-php-extensions /usr/local/bin/
 
