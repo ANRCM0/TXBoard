@@ -92,7 +92,7 @@ def verify_scheduler(backend, exercise_restart=False):
         return value
 
     initial_pid = scheduler_pid()
-    processes = run(['docker', 'top', container, '-eo', 'args']).splitlines()
+    processes = run(['docker', 'top', container, '-eo', 'pid,args']).splitlines()
     require(sum('artisan schedule:work' in line for line in processes) == 1,
             'Native image must run exactly one dedicated schedule worker')
     socket_mode = backend.compose('exec', '-T', 'txboard', 'stat', '-c', '%a',
@@ -110,6 +110,9 @@ def verify_scheduler(backend, exercise_restart=False):
         else:
             raise RuntimeError('Supervisor did not recover the killed schedule worker')
         backend.compose('exec', '-T', 'txboard', *control, 'stop', target)
+        backend.compose('exec', '-T', 'txboard', 'php', '-r',
+                        '$body = file_get_contents("http://127.0.0.1:7002/api/health"); '
+                        'if ((json_decode($body, true)["status"] ?? null) !== "ok") { exit(1); }')
         failure = subprocess.run(['docker', 'exec', container, 'php', '/opt/txboard/healthcheck.php'],
                                  stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=10)
         require(failure.returncode != 0, 'HTTP-only health remained healthy with a stopped scheduler')
