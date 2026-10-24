@@ -100,6 +100,12 @@ jobs:
         run: python3 -m unittest discover -s scripts/tests -p test_module_dev_integration.py
       - name: Check PHP syntax
         run: find app config routes database tests plugins-core plugins/DeliveryReceipt plugins/OfferReservation plugins/ModulePortal -name '*.php' -print0 | xargs -0 -n1 php -l > "$RUNNER_TEMP/php-syntax.log"
+      - name: Exercise controlled diagnostics before the full development suite
+        env:
+          APP_ENV: testing
+          DB_CONNECTION: sqlite
+          DB_DATABASE: ":memory:"
+        run: php artisan test tests/Feature/Installation/CoreDiagnoseTest.php
       - name: Run current native development suite
         env:
           APP_ENV: testing
