@@ -1,7 +1,7 @@
 import { useSyncExternalStore } from 'react'
 import { createAdminApi } from './api'
 import { queryClient } from './queryClient'
-import { dismissConfirm } from '../components/ui/ConfirmDialog'
+import { dismissConfirm } from '../lib/confirmationStore'
 import { createWorkflowActions } from './workflowActions'
 import { createAttachmentTransfer } from '@txboard/shared'
 import { CoreAdminApiError } from './api'

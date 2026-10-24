@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef } from 'react'
-import { requestConfirm, type ConfirmRequest } from '../components/ui/ConfirmDialog'
+import { requestConfirm, type ConfirmRequest } from './confirmationStore'
 import { t } from './i18n'
 
 type ConfirmationOptions = Partial<Pick<ConfirmRequest, 'title' | 'confirmLabel' | 'cancelLabel' | 'danger'>>

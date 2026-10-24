@@ -2,6 +2,7 @@ import { act } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { ConfirmDialogHost, dismissConfirm, requestConfirm } from './ConfirmDialog'
+import { requestConfirm as enqueueConfirmation } from '../../lib/confirmationStore'
 
 let host: HTMLDivElement
 let root: Root
@@ -27,6 +28,17 @@ async function mount() {
 }
 
 describe('ConfirmDialogHost', () => {
+  it('observes the same pending request when its lazy host mounts later', async () => {
+    const action = vi.fn(), cancelAction = vi.fn()
+    enqueueConfirmation({ title: 'Pending before shell mount', action, cancelAction })
+    await mount()
+    expect(document.querySelector('[role="dialog"]')?.getAttribute('aria-label')).toBe('Pending before shell mount')
+    act(() => dismissConfirm())
+    expect(document.querySelector('[role="dialog"]')).toBeNull()
+    expect(cancelAction).toHaveBeenCalledTimes(1)
+    expect(action).not.toHaveBeenCalled()
+  })
+
   it('renders nothing until a confirmation is requested', async () => {
     await mount()
     expect(document.querySelector('[role="dialog"]')).toBeNull()
