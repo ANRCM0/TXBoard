@@ -56,3 +56,41 @@ it('dismisses when focus leaves without pulling focus back from the next control
   expect(document.querySelector('.ui-popover-panel')).toBeNull()
   expect(document.activeElement?.id).toBe('next')
 })
+
+function press(target: Element, key: string) {
+  const event = new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true })
+  act(() => target.dispatchEvent(event))
+  return event
+}
+
+it('opens from the keyboard and navigates available actions without visiting hidden controls', () => {
+  act(() => root.render(<Popover label="Actions">
+    <button id="first-action">First</button><button disabled>Disabled</button>
+    <div style={{ display: 'none' }}><button>Hidden</button></div>
+    <button id="last-action">Last</button>
+  </Popover>))
+  const trigger = document.querySelector<HTMLButtonElement>('button[aria-label="Actions"]')!
+  trigger.focus(); press(trigger, 'ArrowDown')
+  expect(document.activeElement?.id).toBe('first-action')
+  press(document.activeElement!, 'ArrowDown')
+  expect(document.activeElement?.id).toBe('last-action')
+  press(document.activeElement!, 'ArrowDown')
+  expect(document.activeElement?.id).toBe('first-action')
+  press(document.activeElement!, 'End')
+  expect(document.activeElement?.id).toBe('last-action')
+  press(document.activeElement!, 'Home')
+  expect(document.activeElement?.id).toBe('first-action')
+  escape()
+  expect(document.activeElement).toBe(trigger)
+})
+
+it('opens at the last action with ArrowUp and leaves text-field cursor keys to the editor', () => {
+  act(() => root.render(<Popover label="Filter"><button>Reset</button><input aria-label="Search" /></Popover>))
+  const trigger = document.querySelector<HTMLButtonElement>('button[aria-label="Filter"]')!
+  trigger.focus(); press(trigger, 'ArrowUp')
+  const input = document.querySelector<HTMLInputElement>('input[aria-label="Search"]')!
+  expect(document.activeElement).toBe(input)
+  expect(press(input, 'ArrowDown').defaultPrevented).toBe(false)
+  expect(press(input, 'Home').defaultPrevented).toBe(false)
+  expect(document.querySelector('.ui-popover-panel')).not.toBeNull()
+})

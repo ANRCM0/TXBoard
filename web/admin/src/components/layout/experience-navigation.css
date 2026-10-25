@@ -1,0 +1,45 @@
+.admin-command-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 14px;
+  border-top: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 12px;
+}
+.admin-command-summary button {
+  min-height: 32px;
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  background: var(--panel);
+  color: var(--fg);
+  font: inherit;
+  cursor: pointer;
+}
+.admin-command-summary button:focus-visible,
+.admin-auth-request-error:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 3px;
+}
+.admin-auth-request-error {
+  padding: 12px 14px;
+  border: 1px solid var(--danger);
+  background: var(--danger-soft);
+  color: var(--danger);
+  font-size: 13px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+.admin-auth-form [aria-invalid="true"] { scroll-margin-block: 24px; }
+.admin-auth-form input:disabled { opacity: .7; }
+:root .admin-auth-aside { border-radius: 0; }
+:root .admin-auth-aside .admin-auth-aside-brand strong,
+:root .admin-auth-aside .admin-auth-aside-brand small,
+:root .admin-auth-aside .admin-auth-aside-copy > span,
+:root .admin-auth-aside .admin-auth-aside-copy p,
+:root .admin-auth-aside .admin-auth-aside-foot { color: inherit; }
+@media (max-width: 600px) {
+  .admin-command-summary button { min-height: 40px; }
+}

@@ -6,6 +6,15 @@ let originalOverflow = ''
 const inertElements = new Map<Element, { count: number; wasInert: boolean }>()
 const selector = 'a[href], button, input, select, textarea, [tabindex]'
 
+function canFocus(element: HTMLElement) {
+  if (element.tabIndex < 0 || element.matches(':disabled') || element.closest('[hidden], [inert]')) return false
+  for (let parent: HTMLElement | null = element; parent; parent = parent.parentElement) {
+    const style = getComputedStyle(parent)
+    if (style.display === 'none' || style.visibility === 'hidden') return false
+  }
+  return true
+}
+
 function updateLayers() {
   stack.forEach((dialog, index) => {
     dialog.style.setProperty('--dialog-depth', String(index))
@@ -44,12 +53,11 @@ export function useDialog(open: boolean, onClose: () => void) {
       branch = branch.parentElement
     }
 
-    const focusable = () => Array.from(dialog.querySelectorAll<HTMLElement>(selector)).filter(element =>
-      element.tabIndex >= 0 && !element.matches(':disabled') &&
-      !element.closest('[hidden], [inert]') &&
-      getComputedStyle(element).display !== 'none' && getComputedStyle(element).visibility !== 'hidden',
-    )
-    const focusFirst = () => (dialog.querySelector<HTMLElement>('[data-autofocus]') || focusable()[0] || dialog).focus()
+    const focusable = () => Array.from(dialog.querySelectorAll<HTMLElement>(selector)).filter(canFocus)
+    const focusFirst = () => {
+      const items = focusable()
+      ;(items.find(element => element.hasAttribute('data-autofocus')) || items[0] || dialog).focus()
+    }
     focusFirst()
 
     function onKeyDown(event: KeyboardEvent) {
@@ -85,7 +93,10 @@ export function useDialog(open: boolean, onClose: () => void) {
         }
       }
       if (!stack.length) document.body.style.overflow = originalOverflow
-      if (wasTop && trigger?.isConnected) trigger.focus()
+      if (wasTop) {
+        const target = trigger?.isConnected && canFocus(trigger) ? trigger : stack.at(-1)
+        target?.focus({ preventScroll: true })
+      }
     }
   }, [open])
 

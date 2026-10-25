@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { TopBar } from './TopBar'
 import { admin, logoutAdmin } from '../../native/session'
+import { setLocale } from '../../lib/i18n'
 vi.mock('../../lib/routePreload', () => ({ preloadAdminRoute: vi.fn() }))
 vi.mock('../../native/session', () => ({ admin: { read: vi.fn() }, logoutAdmin: vi.fn() }))
 let host: HTMLDivElement
@@ -56,7 +57,7 @@ beforeEach(() => {
   })
   act(() => root.render(<QueryClientProvider client={queryClient}><MemoryRouter><TopBar onOpenMenu={() => {}} /><Location /></MemoryRouter></QueryClientProvider>))
 })
-afterEach(() => { act(() => root.unmount()); queryClient.clear(); host.remove() })
+afterEach(async () => { act(() => root.unmount()); queryClient.clear(); host.remove(); await setLocale('zh-CN') })
 function key(key: string) { act(() => document.activeElement!.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }))) }
 it('opens an explicit account menu instead of signing out from the compact trigger', async () => {
   const trigger = host.querySelector<HTMLButtonElement>('[aria-label="账户菜单"]')!
@@ -84,6 +85,65 @@ it('does not navigate when Enter confirms an IME composition', () => {
   act(() => host.querySelector<HTMLButtonElement>('.admin-command-trigger')!.click())
   act(() => document.activeElement!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', isComposing: true, bubbles: true })))
   expect(document.querySelector('[role="dialog"]')).not.toBeNull()
+})
+
+function search(value: string) {
+  const input = document.querySelector<HTMLInputElement>('[role="combobox"]')!
+  act(() => {
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(input, value)
+    input.dispatchEvent(new Event('input', { bubbles: true }))
+  })
+}
+
+it('supports first/last result selection and recovery from an empty search', () => {
+  act(() => host.querySelector<HTMLButtonElement>('.admin-command-trigger')!.click())
+  key('End')
+  expect(document.querySelector('[aria-selected="true"]')?.textContent).toContain('/config/email/templates')
+  key('Home')
+  expect(document.querySelector('[aria-selected="true"]')?.textContent).toContain('仪表盘')
+  search('no-such-menu')
+  expect(document.querySelector('[role="combobox"]')?.hasAttribute('aria-activedescendant')).toBe(false)
+  key('Enter')
+  expect(host.querySelector('output')?.textContent).toBe('/')
+  act(() => document.querySelector<HTMLButtonElement>('.admin-command-summary button')!.click())
+  expect(document.activeElement?.getAttribute('role')).toBe('combobox')
+  expect(document.querySelectorAll('[role="option"]').length).toBe(35)
+})
+
+it('keeps selection and Enter valid when a language change narrows results', async () => {
+  await act(async () => setLocale('en-US'))
+  act(() => host.querySelector<HTMLButtonElement>('.admin-command-trigger')!.click())
+  search('log')
+  key('ArrowUp')
+  expect(document.querySelectorAll('[role="option"]').length).toBeGreaterThan(1)
+  await act(async () => setLocale('zh-CN'))
+  expect(document.querySelectorAll('[role="option"]').length).toBe(1)
+  expect(document.querySelector('[role="combobox"]')?.getAttribute('aria-activedescendant')).toBe('admin-command-0')
+  key('Enter')
+  expect(host.querySelector('output')?.textContent).toBe('/system/audit-log')
+})
+
+it('does not open a shortcut during composition, repetition or an already handled event', () => {
+  for (const properties of [{ isComposing: true }, { repeat: true }, {}]) {
+    const event = new KeyboardEvent('keydown', { key: 'k', ctrlKey: true, bubbles: true, cancelable: true, ...properties })
+    if (!Object.keys(properties).length) event.preventDefault()
+    act(() => window.dispatchEvent(event))
+    expect(document.querySelector('.admin-command-dialog')).toBeNull()
+  }
+})
+
+it('preserves Home and End text editing in a populated search or with modifiers', () => {
+  act(() => host.querySelector<HTMLButtonElement>('.admin-command-trigger')!.click())
+  search('config')
+  for (const properties of [{ key: 'Home' }, { key: 'End' }, { key: 'Home', shiftKey: true }]) {
+    const event = new KeyboardEvent('keydown', { ...properties, bubbles: true, cancelable: true })
+    act(() => document.activeElement!.dispatchEvent(event))
+    expect(event.defaultPrevented).toBe(false)
+  }
+  search('')
+  const selectAll = new KeyboardEvent('keydown', { key: 'End', shiftKey: true, bubbles: true, cancelable: true })
+  act(() => document.activeElement!.dispatchEvent(selectAll))
+  expect(selectAll.defaultPrevented).toBe(false)
 })
 
 it('offers native management routes without treating cached module metadata as executable navigation', () => {

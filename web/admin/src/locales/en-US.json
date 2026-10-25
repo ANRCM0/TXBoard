@@ -2511,5 +2511,16 @@
   "同步与上报": "Synchronization and reporting",
   "机器人连接": "Bot connection",
   "回调地址": "Webhook address",
-  "讨论群": "Discussion group"
+  "讨论群": "Discussion group",
+  "更新失败，当前显示上次加载的数据。请重试后再操作。": "Refresh failed. Previously loaded data is shown. Retry before taking action.",
+  "正在更新，当前显示上次加载的数据。": "Refreshing. Previously loaded data is shown.",
+  "{label}页码": "{label} page numbers",
+  "跳转": "Go",
+  "请输入 1 至 {lastPage} 的页码。": "Enter a page number from 1 to {lastPage}.",
+  "已显示 {visible} / {total} 列": "{visible} of {total} columns shown",
+  "至少保留一列，固定列始终显示。": "Keep at least one column visible. Fixed columns are always shown.",
+  "已选项目操作": "Selected item actions",
+  "清除当前页选择": "Clear selection on this page",
+  "找到 {count} 个页面": "{count} pages found",
+  "清空搜索": "Clear search"
 }

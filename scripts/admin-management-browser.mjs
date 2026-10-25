@@ -178,6 +178,22 @@ try {
   state.denied.clear()
   passed('settings save only changed fields with the observed CAS version and revoke cached drafts after 403')
 
+  await open(desktop, '/config/server')
+  await page.getByRole('button', { name: '开始编辑', exact: true }).click()
+  const numberSetting = page.locator('#configuration-device_limit_mode')
+  const numberBefore = await numberSetting.inputValue(), writesBeforeInvalid = writes(state).length
+  await numberSetting.fill('')
+  await page.getByRole('button', { name: '保存当前分类', exact: true }).click()
+  await page.waitForFunction(() => document.activeElement?.id === 'configuration-device_limit_mode')
+  assert.equal(await numberSetting.getAttribute('aria-invalid'), 'true')
+  assert.equal(await numberSetting.inputValue(), '')
+  assert.equal(writes(state).length, writesBeforeInvalid)
+  await numberSetting.fill(numberBefore)
+  assert.equal(await numberSetting.getAttribute('aria-invalid'), null)
+  await page.getByRole('button', { name: '取消编辑', exact: true }).click()
+  await page.waitForFunction(() => document.activeElement?.textContent === '开始编辑')
+  passed('blank numeric settings expose and focus native validation without writing zero; cancelling restores edit focus')
+
   await open(desktop, '/config/system/safe')
   await page.getByRole('button', { name: '开始编辑', exact: true }).click()
   assert.equal(await page.locator('#configuration-captcha_type').count(), 0)
@@ -204,6 +220,18 @@ try {
 
   await open(desktop, '/config/appearance')
   const appearanceVersion = state.settings.version
+  const background = page.getByLabel('登录背景地址', { exact: true })
+  const originalBackground = await background.inputValue(), writesBeforeBackground = writes(state).length
+  await background.fill('javascript:alert(1)')
+  await page.getByRole('button', { name: '保存外观', exact: true }).click()
+  await page.waitForFunction(() => document.activeElement?.getAttribute('aria-invalid') === 'true')
+  assert.equal(await background.getAttribute('aria-invalid'), 'true')
+  assert.ok(await background.getAttribute('aria-errormessage'))
+  assert.equal(writes(state).length, writesBeforeBackground)
+  await screenshot(page, 'appearance-validation-desktop')
+  await background.fill(originalBackground)
+  assert.equal(await background.getAttribute('aria-invalid'), null)
+  passed('unsafe background drafts stay local, retain field guidance, focus their error and recover when corrected')
   await page.getByLabel('侧栏表面风格', { exact: true }).selectOption('contrast')
   await page.getByLabel('强调色', { exact: true }).selectOption('green')
   await page.getByRole('button', { name: '保存外观', exact: true }).click()

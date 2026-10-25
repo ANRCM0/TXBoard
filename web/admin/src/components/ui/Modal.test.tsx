@@ -90,4 +90,38 @@ describe('Modal keyboard interaction', () => {
     const dialog = document.querySelector('[role="dialog"]')!
     expect(document.getElementById(dialog.getAttribute('aria-describedby')!)?.textContent).toBe('核对后保存')
   })
+
+  it('skips unavailable autofocus targets and CSS-hidden controls while trapping focus', () => {
+    act(() => root.render(<Modal open title="Edit" onClose={() => {}}>
+      <input data-autofocus disabled aria-label="Unavailable" />
+      <div style={{ display: 'none' }}><button id="hidden-action">Hidden</button></div>
+      <input data-autofocus aria-label="Available" />
+      <button id="last-action">Save</button>
+    </Modal>))
+    expect(document.activeElement?.getAttribute('aria-label')).toBe('Available')
+    document.querySelector<HTMLButtonElement>('.modal-header button')!.focus()
+    key('Tab', true)
+    expect(document.activeElement?.id).toBe('last-action')
+    key('Tab')
+    expect(document.activeElement).toBe(document.querySelector('.modal-header button'))
+  })
+
+  it('returns focus to the parent when a child trigger is disabled during its operation', () => {
+    function DisabledTrigger() {
+      const [nested, setNested] = useState(false)
+      const [unavailable, setUnavailable] = useState(false)
+      return <Modal open title="Parent" onClose={() => {}}>
+        <button id="child-trigger" disabled={unavailable} onClick={() => { setUnavailable(true); setNested(true) }}>Open child</button>
+        <Modal open={nested} title="Child" onClose={() => setNested(false)}>Content</Modal>
+      </Modal>
+    }
+    act(() => root.render(<DisabledTrigger />))
+    const trigger = document.querySelector<HTMLButtonElement>('#child-trigger')!
+    trigger.focus()
+    act(() => trigger.click())
+    key('Escape')
+    expect(document.activeElement).toBe(document.querySelector('.modal-root'))
+    expect(trigger.disabled).toBe(true)
+    expect(document.body.style.overflow).toBe('hidden')
+  })
 })

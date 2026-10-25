@@ -60,7 +60,7 @@ function ConfirmDialog({ request }: { request: ConfirmRequest | null }) {
     title={request.title}
     onClose={cancel}
     footer={<div className="modal-actions">
-      <button type="button" className="button" onClick={cancel}>{request.cancelLabel || t("取消")}</button>
+      <button type="button" className="button" data-autofocus onClick={cancel}>{request.cancelLabel || t("取消")}</button>
       <button
         type="button"
         className={'button ' + (request.danger ? 'danger' : 'primary')}

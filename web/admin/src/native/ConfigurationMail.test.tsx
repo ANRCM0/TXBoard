@@ -53,6 +53,36 @@ it('sends only changed current-group fields and leaves configured credentials un
   await vi.waitFor(() => expect(admin.write).toHaveBeenCalledExactlyOnceWith('settings.configuration.update', { expected_version: initialVersion, values: { email_host: 'smtp.new.example' } }, expect.any(String)))
 })
 
+it('keeps a cleared numeric setting blank and focuses its validation error without writing zero', async () => {
+  await render('server'); await click('开始编辑')
+  const control = host.querySelector<HTMLInputElement>('#configuration-device_limit_mode')!
+  await input(control, '')
+  expect(control.value).toBe('')
+  await submit()
+  expect(admin.write).not.toHaveBeenCalled()
+  expect(document.activeElement).toBe(control)
+  expect(control.getAttribute('aria-invalid')).toBe('true')
+  expect(control.getAttribute('aria-errormessage')).toBe('configuration-device_limit_mode-error')
+  expect(document.getElementById(control.getAttribute('aria-errormessage')!)).not.toBeNull()
+  await input(control, '0')
+  expect(control.hasAttribute('aria-invalid')).toBe(false)
+  expect(button('保存当前分类').disabled).toBe(true)
+  expect(admin.write).not.toHaveBeenCalled()
+})
+
+it('restores the edit entry after cancelling or saving and disables unchanged saves', async () => {
+  await render(); await click('开始编辑')
+  expect(button('保存当前分类').disabled).toBe(true)
+  await click('取消编辑')
+  expect(document.activeElement).toBe(button('开始编辑'))
+  await click('开始编辑')
+  await input(host.querySelector<HTMLInputElement>('#configuration-app_name')!, 'reviewed site')
+  expect(button('保存当前分类').disabled).toBe(false)
+  await submit()
+  expect(admin.write).toHaveBeenCalledExactlyOnceWith('settings.configuration.update', { expected_version: initialVersion, values: { app_name: 'reviewed site' } }, expect.any(String))
+  expect(document.activeElement).toBe(button('开始编辑'))
+})
+
 it('preserves the original sensitive write and key across navigation until explicit recovery', async () => {
   await render('email'); await click('开始编辑')
   await input(host.querySelector<HTMLInputElement>('#configuration-email_password')!, 'new-secret')

@@ -1,5 +1,5 @@
 import { t, useLocale } from '../../lib/i18n'
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
 import { Inbox, Info } from 'lucide-react'
 import { QueryFeedback } from './QueryFeedback'
 import { Popover } from './Popover'
@@ -22,6 +22,8 @@ export function DataTable<T>({ rows, columns, empty = t("暂无数据"), emptySt
   mobilePrimaryKey?: string
 }) {
   useLocale()
+  const feedbackId = useId()
+  const feedbackDescription = loading || error ? feedbackId : undefined
   const [compact, setCompact] = useState(() => window.matchMedia?.('(max-width: 600px)').matches ?? false)
   useEffect(() => {
     const media = window.matchMedia?.('(max-width: 600px)')
@@ -70,9 +72,9 @@ export function DataTable<T>({ rows, columns, empty = t("暂无数据"), emptySt
   const actions = columns.filter(column => column.pin === 'right')
   const fields = columns.filter(column => column !== primary && !actions.includes(column))
   return <>
-    <QueryFeedback loading={loading} error={error} onRetry={onRetry} />
+    <QueryFeedback id={feedbackId} loading={loading} error={error} onRetry={onRetry} hasData={hasRows} />
     {showCustomEmpty ? <div className="table-empty-region">{emptyState}</div> : null}
-    {showTable && mobile ? <div className="ui-mobile-records" role="region" aria-label={t(label)} aria-busy={loading || false}>
+    {showTable && mobile ? <div className="ui-mobile-records" role="region" aria-label={t(label)} aria-describedby={feedbackDescription} aria-busy={loading || false}>
       {selection ? <label className="ui-mobile-select-all"><input ref={headerCheckbox} type="checkbox" aria-label={t("选择当前页全部行")} checked={allSelected} disabled={selectionDisabled || !hasRows} onChange={toggleAll} />{t("选择当前页全部行")}</label> : null}
       {hasRows ? rows.map((row, index) => <article className="ui-mobile-record" key={rowKey ? rowKey(row) : index} data-selected={selection?.selected.has(selection.getKey(row)) || undefined}>
         <header>{selection ? <input type="checkbox" checked={selection.selected.has(selection.getKey(row))} disabled={selectionDisabled} onChange={() => toggleRow(row)} aria-label={t("选择 {label}", { label: selection.getLabel?.(row) ?? selection.getKey(row) })} /> : null}<div>{primary?.render(row)}</div></header>
@@ -80,7 +82,7 @@ export function DataTable<T>({ rows, columns, empty = t("暂无数据"), emptySt
         {actions.length ? <footer>{actions.map(column => <div key={column.key}>{column.render(row)}</div>)}</footer> : null}
       </article>) : <div className="table-empty-content"><Inbox size={32} aria-hidden="true" /><span>{t(empty)}</span></div>}
     </div> : null}
-    {showTable && !mobile ? <div className={'table-wrap' + (stickyHeader ? ' is-sticky' : '')} tabIndex={0} role="region" aria-label={t(label)} aria-busy={loading || false}>
+    {showTable && !mobile ? <div className={'table-wrap' + (stickyHeader ? ' is-sticky' : '')} tabIndex={0} role="region" aria-label={t(label)} aria-describedby={feedbackDescription} aria-busy={loading || false}>
       <table className={'data-table ui-data-table' + (pinLeft ? ' has-sticky-first' : '') + (pinRight ? ' has-sticky-last' : '') + (selection ? ' has-selection' : '') + (className ? ' ' + className : '')}><thead><tr>
         {selection ? <th scope="col" className="ui-selection-cell">
           <input ref={headerCheckbox} type="checkbox" aria-label={t("选择当前页全部行")}

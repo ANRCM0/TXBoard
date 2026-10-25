@@ -1,7 +1,7 @@
 import { t, useLocale } from '../../lib/i18n'
 import { LogOut, Search, X, UserRound, Settings, ShieldCheck } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { admin, logoutAdmin } from '../../native/session'
@@ -13,6 +13,7 @@ import { ThemeToggle } from '../ui/ThemeToggle'
 import { Popover } from '../ui/Popover'
 import { LanguageSelector } from '../ui/LanguageSelector'
 import './account-menu.css'
+import './experience-navigation.css'
 
 const commandItems = [
   ['/', '仪表盘'],
@@ -59,6 +60,7 @@ export function TopBar(_props: { onOpenMenu: () => void }) {
   const [commandOpen, setCommandOpen] = useState(false)
   const [query, setQuery] = useState('')
   const [activeIndex, setActiveIndex] = useState(0)
+  const searchRef = useRef<HTMLInputElement>(null)
   const [accountOpen, setAccountOpen] = useState(false)
   const identity = useQuery({ queryKey: ['native-admin', 'identity'], enabled: accountOpen, retry: false,
     queryFn: ({ signal }) => admin.read('identity.admin.get', {}, signal) })
@@ -68,7 +70,7 @@ export function TopBar(_props: { onOpenMenu: () => void }) {
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
-      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
+      if (!event.defaultPrevented && !event.isComposing && !event.repeat && (event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
         event.preventDefault()
         setCommandOpen(true)
       }
@@ -86,16 +88,16 @@ export function TopBar(_props: { onOpenMenu: () => void }) {
 
   useEffect(() => { setCommandOpen(false); setAccountOpen(false) }, [location.pathname])
 
-  useEffect(() => {
-    commandRef.current?.querySelector('[aria-selected="true"]')?.scrollIntoView?.({ block: 'nearest' })
-  }, [activeIndex, commandOpen, commandRef])
-
   const commands = useMemo(() => {
     const all = commandItems.map(([path, label]) => [path, t(label)] as const)
-    const q = query.trim().toLowerCase()
-    if (!q) return all
-    return all.filter(([path, label]) => `${label} ${path}`.toLowerCase().includes(q))
+    const terms = query.trim().toLowerCase().split(/\s+/).filter(Boolean)
+    return all.filter(([path, label]) => terms.every(term => `${label} ${path}`.toLowerCase().includes(term)))
   }, [query, locale])
+  const activeSelection = Math.min(activeIndex, Math.max(0, commands.length - 1))
+
+  useEffect(() => {
+    commandRef.current?.querySelector('[aria-selected="true"]')?.scrollIntoView?.({ block: 'nearest' })
+  }, [activeSelection, commandOpen, commands, commandRef])
 
   const [exiting, setExiting] = useState(false)
   async function logout() {
@@ -119,7 +121,7 @@ export function TopBar(_props: { onOpenMenu: () => void }) {
   return (
     <>
       <div className="admin-toolbar admin-topbar-tools" aria-label={t("控制台工具")}>
-        <button type="button" aria-label={t("搜索菜单和功能")} title={t("搜索菜单和功能")} className="admin-command-trigger" onClick={() => setCommandOpen(true)}>
+        <button type="button" aria-label={t("搜索菜单和功能")} title={t("搜索菜单和功能")} aria-haspopup="dialog" aria-expanded={commandOpen} aria-controls={commandOpen ? 'admin-command-dialog' : undefined} aria-keyshortcuts="Control+k Meta+k" className="admin-command-trigger" onClick={() => setCommandOpen(true)}>
             <Search size={16} />
             <span>{t("搜索菜单和功能…")}</span>
             <kbd>{shortcut}</kbd>
@@ -145,28 +147,33 @@ export function TopBar(_props: { onOpenMenu: () => void }) {
 
       {commandOpen ? createPortal(
         <div className="admin-command-overlay" onMouseDown={event => event.target === event.currentTarget && setCommandOpen(false)}>
-          <div ref={commandRef} tabIndex={-1} className="admin-command-dialog" role="dialog" aria-modal="true" aria-label={t("搜索菜单和功能")}>
+          <div ref={commandRef} id="admin-command-dialog" tabIndex={-1} className="admin-command-dialog" role="dialog" aria-modal="true" aria-label={t("搜索菜单和功能")}>
             <div className="admin-command-input">
               <Search size={18} />
               <input
+                ref={searchRef}
                 data-autofocus
                 aria-label={t("搜索菜单和功能")}
                 role="combobox"
                 aria-expanded="true"
                 aria-autocomplete="list"
                 aria-controls="admin-command-results"
-                aria-activedescendant={commands.length ? `admin-command-${activeIndex}` : undefined}
+                aria-activedescendant={commands.length ? `admin-command-${activeSelection}` : undefined}
                 value={query}
                 onChange={event => { setQuery(event.target.value); setActiveIndex(0) }}
                 onKeyDown={event => {
                   if (event.nativeEvent.isComposing || !commands.length) return
                   if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
                     event.preventDefault()
-                    setActiveIndex(index => (index + (event.key === 'ArrowDown' ? 1 : -1) + commands.length) % commands.length)
+                    setActiveIndex((activeSelection + (event.key === 'ArrowDown' ? 1 : -1) + commands.length) % commands.length)
+                  }
+                  if (!query && !event.shiftKey && !event.ctrlKey && !event.metaKey && !event.altKey && (event.key === 'Home' || event.key === 'End')) {
+                    event.preventDefault()
+                    setActiveIndex(event.key === 'Home' ? 0 : commands.length - 1)
                   }
                   if (event.key === 'Enter') {
                     event.preventDefault()
-                    go(commands[activeIndex][0])
+                    go(commands[activeSelection][0])
                   }
                 }}
                 placeholder={t("搜索菜单和功能…")}
@@ -180,7 +187,7 @@ export function TopBar(_props: { onOpenMenu: () => void }) {
                   key={path}
                   role="option"
                   id={`admin-command-${index}`}
-                  aria-selected={index === activeIndex}
+                  aria-selected={index === activeSelection}
                   tabIndex={-1}
                   onMouseEnter={() => { setActiveIndex(index); preloadAdminRoute(path) }}
                   onFocus={() => preloadAdminRoute(path)}
@@ -191,6 +198,10 @@ export function TopBar(_props: { onOpenMenu: () => void }) {
                 </button>
               ))}
               {!commands.length ? <div className="admin-command-empty">{t("没有匹配项")}</div> : null}
+            </div>
+            <div className="admin-command-summary">
+              <span role="status" aria-live="polite">{t('找到 {count} 个页面', { count: commands.length })}</span>
+              {query ? <button type="button" onClick={() => { setQuery(''); setActiveIndex(0); searchRef.current?.focus() }}>{t('清空搜索')}</button> : null}
             </div>
             <div className="admin-command-hint">{t("↑ ↓ 选择 · Enter 打开 · Esc 关闭")}</div>
           </div>

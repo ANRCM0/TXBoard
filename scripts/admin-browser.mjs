@@ -67,13 +67,33 @@ const order = { id: '7', user_id: account.id, trade_no: 'ORDER-A', plan_id: '8',
   type: 1, status: 0, amount_minor: '9007199254740993', currency: 'USD', plan: { id: '8', name: 'Frozen Plus' },
   created_at: new Date(Date.now() - 86400000).toISOString(), paid_at: null, purchase_terms_version: 'tx-core.purchase-terms/v2' }
 function passed(name) { checks.push(name); console.log('PASS ' + name) }
+async function assertLoginContrast(page) {
+  const values = await page.locator('.admin-auth-aside').evaluate(aside => {
+    const luminance = value => {
+      const channels = value.match(/[\d.]+/g)?.slice(0, 3).map(Number)
+      if (!channels || channels.length !== 3) throw new Error('Expected an opaque computed RGB color')
+      const linear = channels.map(channel => {
+        const normalized = channel / 255
+        return normalized <= .04045 ? normalized / 12.92 : ((normalized + .055) / 1.055) ** 2.4
+      })
+      return linear[0] * .2126 + linear[1] * .7152 + linear[2] * .0722
+    }
+    const background = luminance(getComputedStyle(aside).backgroundColor)
+    return [...aside.querySelectorAll('.admin-auth-aside-brand strong, .admin-auth-aside-brand small, .admin-auth-aside-copy > span, .admin-auth-aside-copy p, .admin-auth-aside-foot')].map(element => {
+      const foreground = luminance(getComputedStyle(element).color)
+      return { text: element.textContent, ratio: (Math.max(foreground, background) + .05) / (Math.min(foreground, background) + .05) }
+    })
+  })
+  assert.equal(values.length, 5)
+  for (const value of values) assert.ok(value.ratio >= 4.5, `Readable login text: ${value.text} (${value.ratio})`)
+}
 function session(id, name) {
   return { id, name, abilities: ['admin'], created_at: '2026-10-18T08:00:00Z',
     last_used_at: null, updated_at: null, expires_at: null }
 }
 async function fixture(viewport) {
   const context = await browser.newContext({ locale: 'zh-CN', viewport })
-  const state = { nodesStatus: 200, logoutFailure: false, revokeLost: true, malformedCaptcha: false,
+  const state = { nodesStatus: 200, loginStatus: 200, logoutFailure: false, revokeLost: true, malformedCaptcha: false,
     sessions: [session('1', 'Current session'), session('2', 'Secondary session')], operations: [], revokeKeys: [],
     pageErrors: [], forbiddenRequests: [], reads: [], accountsStatus: 200, ordersStatus: 200, dashboardStatus: 200,
     eventStage: 0, eventFailure: false, eventsStatus: 200 }
@@ -102,6 +122,7 @@ async function fixture(viewport) {
     if (operation === 'identity.admin-session.create') {
       assert.equal(input.email, 'admin@example.test')
       assert.match(req.headers()['idempotency-key'], /^[0-9a-f-]{36}$/)
+      if (state.loginStatus !== 200) return fail(state.loginStatus)
       return send({ auth_data: 'Bearer 1|browser-admin-fixture', is_admin: true, secure_path: 'ci_admin' })
     }
     assert.equal(req.headers().authorization, 'Bearer 1|browser-admin-fixture')
@@ -207,16 +228,44 @@ try {
   const { page, state } = desktop
   await page.goto(origin + '/admin/sign-in')
   await page.getByRole('heading', { name: '管理员登录' }).waitFor()
+  await assertLoginContrast(page)
   await page.screenshot({ path: output + '/login-desktop.png', fullPage: true })
   await page.getByRole('button', { name: '主题设置', exact: true }).click()
   await page.getByRole('button', { name: '深色模式', exact: true }).click()
   assert.equal(await page.getByRole('button', { name: '主题设置', exact: true }).getAttribute('aria-expanded'), 'false')
   await page.waitForFunction(() => document.documentElement.dataset.theme === 'dark')
+  await assertLoginContrast(page)
+  passed('login branding and guidance remain readable in both light and dark modes')
   await page.screenshot({ path: output + '/login-dark.png', fullPage: true })
+  state.loginStatus = 401
+  await page.getByRole('textbox', { name: '邮箱', exact: true }).fill('admin@example.test')
+  await page.getByLabel('密码', { exact: true }).fill('admin-password')
+  await page.getByRole('button', { name: '登录', exact: true }).click()
+  const loginError = page.locator('.admin-auth-request-error')
+  await loginError.waitFor()
+  await page.waitForFunction(() => document.activeElement?.classList.contains('admin-auth-request-error'))
+  assert.equal(await page.getByRole('textbox', { name: '邮箱', exact: true }).inputValue(), 'admin@example.test')
+  await page.screenshot({ path: output + '/login-error-desktop.png', fullPage: true })
+  await page.getByLabel('密码', { exact: true }).fill('corrected-password')
+  await loginError.waitFor({ state: 'detached' })
+  state.loginStatus = 200
+  passed('failed login retains a focused persistent explanation and clears it when credentials are edited')
   await login(page, '/admin/server/manage')
   await page.getByRole('table').getByRole('link', { name: 'Tokyo-A', exact: true }).waitFor()
   await page.waitForFunction(() => document.documentElement.dataset.theme === 'dark')
   await page.screenshot({ path: output + '/nodes-dark.png', fullPage: true })
+  await page.getByRole('button', { name: '搜索菜单和功能', exact: true }).click()
+  const search = page.getByRole('combobox', { name: '搜索菜单和功能', exact: true })
+  await search.press('End')
+  assert.match(await page.locator('.admin-command-dialog').getByRole('option', { selected: true }).innerText(), /\/config\/email\/templates/)
+  await search.fill('no-such-menu')
+  await page.getByText('没有匹配项', { exact: true }).waitFor()
+  await page.getByRole('button', { name: '清空搜索', exact: true }).click()
+  assert.equal(await search.inputValue(), '')
+  assert.equal(await search.evaluate(input => input === document.activeElement), true)
+  await search.press('Escape')
+  assert.equal(await page.getByRole('button', { name: '搜索菜单和功能', exact: true }).getAttribute('aria-expanded'), 'false')
+  passed('command search provides bounded keyboard selection and a focused empty-result recovery')
   await nav(page, '仪表盘')
   await page.getByRole('region', { name: '原生经营统计', exact: true }).waitFor()
   assert.equal(await page.getByRole('region', { name: '管理入口', exact: true }).count(), 0)

@@ -14,6 +14,7 @@ type ControlProps = {
   required?: boolean
   'aria-invalid'?: boolean
   'aria-describedby'?: string
+  'aria-errormessage'?: string
 }
 
 export function Field({ label, hint, error, required, className = '', children }: {
@@ -27,20 +28,22 @@ export function Field({ label, hint, error, required, className = '', children }
   const generatedId = useId()
   const childProps = isValidElement(children) ? children.props as ControlProps : undefined
   const controlId = childProps?.id ?? generatedId
-  const hintId = hint && !error ? controlId + '-hint' : undefined
+  const hintId = hint ? controlId + '-hint' : undefined
   const errorId = error ? controlId + '-error' : undefined
+  const isRequired = required || childProps?.required
   const describedBy = [childProps?.['aria-describedby'], hintId, errorId].filter(Boolean).join(' ') || undefined
   const control = isValidElement(children)
     ? cloneElement(children as ReactElement<ControlProps>, {
         id: controlId,
-        required: required || childProps?.required,
+        required: isRequired,
         'aria-invalid': error ? true : childProps?.['aria-invalid'],
         'aria-describedby': describedBy,
+        'aria-errormessage': errorId || childProps?.['aria-errormessage'],
       })
     : children
 
   return <div className={'field ui-field ' + className}>
-    <label className="ui-field-label" htmlFor={controlId}>{label}{required ? <b className="ui-required" aria-hidden="true"> *</b> : null}</label>
+    <label className="ui-field-label" htmlFor={controlId}>{label}{isRequired ? <b className="ui-required" aria-hidden="true"> *</b> : null}</label>
     {control}
     {hintId ? <small id={hintId} className="field-help">{hint}</small> : null}
     {errorId ? <small id={errorId} className="field-error" role="alert">{error}</small> : null}
