@@ -32,7 +32,7 @@ RUN npm run build:sdk && \
     VITE_BASE_PATH=/ npm run build --workspace @txboard/user
 
 # One production image for the entire TXBoard control plane:
-# Caddy + Admin/User SPAs + Octane + Horizon + Redis + WebSocket server
+# Caddy + Admin/User SPAs + Octane + Horizon + scheduler + Redis + WebSocket server
 # 6.2.3-php8.2-alpine carries PHP 8.2.35, which fixes CVE-2026-109618 and
 # CVE-2026-109619 (unauthenticated RCE, "php2shell"). The previously pinned
 # 6.2.2-php8.2-alpine is frozen at PHP 8.2.32 — rebuilding that tag does not
@@ -54,7 +54,8 @@ COPY api/.docker/caddy/Caddyfile /etc/caddy/Caddyfile
 COPY api/.docker/php/zz-txboard.ini /usr/local/etc/php/conf.d/zz-txboard.ini
 COPY api/.docker/entrypoint.sh /entrypoint.sh
 COPY api/.docker/healthcheck.php /opt/txboard/healthcheck.php
-RUN chmod +x /entrypoint.sh && \
+COPY api/.docker/with-redis.sh /opt/txboard/with-redis.sh
+RUN chmod +x /entrypoint.sh /opt/txboard/with-redis.sh && \
     TXBOARD_SITE_ADDRESS=:80 SUBSCRIBE_PATH=s caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
 
 WORKDIR /www
@@ -92,6 +93,7 @@ RUN composer dump-autoload --no-dev --optimize --no-interaction && \
 
 ENV ENABLE_WEB=true \
     ENABLE_HORIZON=true \
+    ENABLE_SCHEDULER=true \
     ENABLE_REDIS=true \
     ENABLE_WS_SERVER=true \
     ENABLE_CADDY=true \

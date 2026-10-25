@@ -80,6 +80,62 @@ def verify_resource_limits(backend, plan):
             'redis_budget_verified': True, 'redis_noeviction_verified': True}
 
 
+def verify_scheduler(backend, exercise_restart=False):
+    """Observe the supervised worker, never invoke schedule:run from the fixture."""
+    control = ['supervisorctl', '-c', '/etc/supervisor/conf.d/supervisord.conf']
+    target = 'scheduler:scheduler_00'
+    container = backend.container(healthy=True)['id']
+
+    def scheduler_pid():
+        value = backend.compose('exec', '-T', 'txboard', *control, 'pid', target).strip()
+        require(value.isdecimal() and int(value) > 1, 'Supervised scheduler PID unavailable')
+        return value
+
+    initial_pid = scheduler_pid()
+    processes = run(['docker', 'top', container, '-eo', 'pid,args']).splitlines()
+    require(sum('artisan schedule:work' in line for line in processes) == 1,
+            'Native image must run exactly one dedicated schedule worker')
+    socket_mode = backend.compose('exec', '-T', 'txboard', 'stat', '-c', '%a',
+                                  '/run/txboard-supervisor.sock').strip()
+    require(socket_mode == '600', 'Supervisor control socket is not root-only')
+    since = str(int(time.time()))
+    if exercise_restart:
+        backend.compose('exec', '-T', 'txboard', 'sh', '-c', 'kill -KILL "$1"', 'sh', initial_pid)
+        for attempt in range(30):
+            status = subprocess.run(['docker', 'exec', container, *control, 'status', target],
+                                    stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True, timeout=10)
+            if status.returncode == 0 and 'RUNNING' in status.stdout and scheduler_pid() != initial_pid:
+                break
+            time.sleep(1)
+        else:
+            raise RuntimeError('Supervisor did not recover the killed schedule worker')
+        backend.compose('exec', '-T', 'txboard', *control, 'stop', target)
+        backend.compose('exec', '-T', 'txboard', 'php', '-r',
+                        '$body = file_get_contents("http://127.0.0.1:7002/api/health"); '
+                        'if ((json_decode($body, true)["status"] ?? null) !== "ok") { exit(1); }')
+        failure = subprocess.run(['docker', 'exec', container, 'php', '/opt/txboard/healthcheck.php'],
+                                 stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=10)
+        require(failure.returncode != 0, 'HTTP-only health remained healthy with a stopped scheduler')
+        backend.compose('exec', '-T', 'txboard', *control, 'start', target)
+
+    commands = ['core:subscriptions-tick', 'check:order', 'core:native-work', 'core:module-work']
+    deadline = time.monotonic() + 100
+    while time.monotonic() < deadline:
+        output = run(['docker', 'logs', '--since', since, container])
+        output = re.sub(r'\x1b\[[0-9;]*[A-Za-z]', '', output)
+        if all(re.search(r'Running \[[^\r\n]*' + re.escape(command) + r'[^\r\n]*\bDONE\b', output)
+               for command in commands):
+            break
+        time.sleep(2)
+    else:
+        raise RuntimeError('Supervised scheduler did not complete all four native tasks within 100 seconds')
+    backend.compose('exec', '-T', 'txboard', 'php', '/opt/txboard/healthcheck.php')
+    return {'single_supervised_worker': True, 'root_only_control_socket': True,
+            'native_tasks_completed': commands, 'observed_after_container_start': True,
+            'killed_worker_recovered': exercise_restart,
+            'stopped_scheduler_fails_health': exercise_restart}
+
+
 def verify_backup_assets(native, installation, assets):
     intent = native.Journal(installation).load()
     require(intent is not None and intent['stage'] == 'completed' and 'backup' in intent,
@@ -355,6 +411,7 @@ def main():
             require(first["ready"] is True and first["authority_epoch"] == "2", "Fresh native installation was not activated")
             require(backend.container(healthy=True)["image"] == baseline, "Installed image differs from immutable input")
             resource_evidence, backup_evidence = [], []
+            scheduler_evidence = [verify_scheduler(backend, exercise_restart=True)]
             if args.verify_resource_profile:
                 resource_plan = json.loads((installation / 'resource-plan.json').read_text())
                 require(resource_plan['ready'] is True, 'Installer did not persist a ready capacity plan')
@@ -450,6 +507,7 @@ def main():
                         "Updated image diagnostics did not retain active runtime authority")
                 reports.append(report)
                 require(backend.container(healthy=True)["image"] == image and report["authority_epoch"] == "2", "New image/epoch readiness mismatch")
+                scheduler_evidence.append(verify_scheduler(backend))
                 if args.verify_resource_profile:
                     resource_evidence.append(verify_resource_limits(backend, resource_plan))
                     backup_evidence.append(verify_backup_assets(native, installation, assets))
@@ -475,6 +533,7 @@ def main():
                 "composition_approvals": 3, "original_orders": 1, "module_owned_schema": 2, "recovered_operation": recovered_operation,
                 "resource_limits": resource_evidence, "native_backup_materials": backup_evidence,
                 "browser_ingress": browser_evidence,
+                "scheduler": scheduler_evidence,
                 "provider": "actual Go mTLS capability peer; no Node traffic in this image proof", "consumer": "actual admin login, catalog, order, extension HTTP and Chromium SDK host"})
             args.output.chmod(0o644)
             print("Native immutable image install, update and killed-executor recovery passed", flush=True)
