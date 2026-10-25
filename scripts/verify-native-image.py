@@ -158,6 +158,37 @@ def verify_backup_assets(native, installation, assets):
             'live_assets_preserved': True}
 
 
+def verify_ingress_budget(request, snapshot, wait=time.sleep, clock=time.monotonic):
+    """Observe counter increments within a live window, without changing Redis TTLs."""
+    for attempt in range(3):
+        before = snapshot()
+        if not before:
+            request('/gateway/v1/bootstrap')
+            before = snapshot()
+        require(len(before) == 1, 'Image fixture must have one socket ingress budget before XFF rotation')
+        key, (count, ttl) = next(iter(before.items()))
+        require(isinstance(count, int) and count > 0 and isinstance(ttl, int) and ttl > 0,
+                'Ingress counter observation is invalid')
+        if ttl < 15000:
+            wait(ttl / 1000 + 0.05)
+            request('/gateway/v1/bootstrap')
+            continue
+        started = clock()
+        for forwarded in ['198.51.100.7', '203.0.113.9, 198.51.100.8']:
+            request('/gateway/v1/bootstrap', headers={'X-Forwarded-For': forwarded,
+                    'X-Core-Browser-Client-IP': '203.0.113.10'})
+        after = snapshot()
+        require(not (set(after) - set(before)), 'Untrusted XFF created another actual image ingress budget')
+        elapsed = (clock() - started) * 1000
+        if elapsed >= ttl and (not after or after[key][0] != count + 2):
+            request('/gateway/v1/bootstrap')
+            continue
+        require(set(after) == set(before) and after[key][0] == count + 2 and after[key][1] > 0,
+                'Untrusted XFF did not consume the existing socket ingress counter')
+        return
+    raise RuntimeError('No stable ingress counter observation within three bounded attempts')
+
+
 def verify_browser_ingress(origin, auth, backend):
     """Exercise the built image's public Caddy listener, without a Gateway process."""
     def request(path, body=None, headers=None, expected=200):
@@ -205,19 +236,35 @@ def verify_browser_ingress(origin, auth, backend):
     # Default Caddy trust is loopback only; the Docker bridge peer is untrusted.
     # Rotating XFF must hit the existing socket budget.
     def ingress_buckets():
-        return set(backend.compose('exec', '-T', 'txboard', 'redis-cli', '-s', '/data/redis.sock',
-                                  '-n', '1', '--raw', '--scan', '--pattern', '*core-browser:ingress:*').splitlines())
-    buckets = ingress_buckets()
-    require(len(buckets) == 1, 'Image fixture must have one socket ingress budget before XFF rotation')
-    for forwarded in ['198.51.100.7', '203.0.113.9, 198.51.100.8']:
-        request('/gateway/v1/bootstrap', headers={'X-Forwarded-For': forwarded,
-                'X-Core-Browser-Client-IP': '203.0.113.10'})
-    require(ingress_buckets() == buckets, 'Untrusted XFF split the actual image ingress budget')
+        script = ("local out={}; for _,key in ipairs(redis.call('KEYS',ARGV[1])) do "
+                  "out[key]={tonumber(redis.call('GET',key)),redis.call('PTTL',key)}; end; return cjson.encode(out)")
+        return json.loads(backend.compose('exec', '-T', 'txboard', 'redis-cli', '-s', '/data/redis.sock',
+                                         '-n', '1', '--raw', 'EVAL', script, '0', '*core-browser:ingress:*'))
+    verify_ingress_budget(request, ingress_buckets)
     return {'public_caddy_listener': True, 'same_process_bootstrap_and_discovery': True,
             'bearer_admin_read': True, 'current_admin_path_required': True, 'no_session_cookie': True,
             'cookie_only_rejected': True, 'cross_origin_and_host_rejected': True,
             'service_header_rejected': True, 'caddy_overwrites_client_ip_header': True,
             'untrusted_xff_cannot_split_ingress_budget': True}
+
+
+def verify_installed_entry(installation, backend, origin, auth):
+    report = json.loads(run(['bash', installation / 'txboard.sh', '--dir', installation,
+                             'core-diagnose', '--show-admin-path']))
+    path = report['sections']['administrator_entry']['data']['path']
+    require(path == '/' + auth['secure_path'], 'Diagnostic administrator entry differs from the authenticated runtime')
+    for suffix in ['/', '/sign-in']:
+        with urllib.request.urlopen(origin + path + suffix, timeout=20) as response:
+            body = response.read(1048577)
+            require(response.status == 200 and len(body) <= 1048576 and b'/.txboard-admin/' in body,
+                    'Actual administrator SPA entry did not serve its built assets')
+    container = backend.container(healthy=True)['id']
+    inspection = json.loads(backend.run(['inspect', '--type', 'container', container]))[0]
+    bindings = inspection['HostConfig']['PortBindings']['80/tcp']
+    require(len(bindings) == 1 and bindings[0]['HostIp'] == '127.0.0.1',
+            'Loopback public host was published beyond its requested listener')
+    return {'diagnostic_entry_matches_runtime': True, 'spa_entry_and_deep_route': True,
+            'loopback_listener_verified': True}
 
 
 def purchase_diagnostic(installation, email, offer_id, key):
@@ -442,6 +489,7 @@ def main():
                         code = "HTTP_ERROR"
                     raise RuntimeError(f"Native HTTP request rejected: {error.code} {code}") from None
             auth = http("/txapi/auth/admin/login", {"email": preparation["identity"]["email"], "password": password})
+            installer_evidence = [verify_installed_entry(installation, backend, origin, auth)]
             browser_evidence = [verify_browser_ingress(origin, auth, backend)]
             presentation = f"/txapi/admin/{auth['secure_path']}/extensions/module_portal/"
             require(http(presentation + "presentation", token=auth["auth_data"])["version"] == "1.0.0", "Real HTTP module presentation was unavailable")
@@ -512,6 +560,7 @@ def main():
                     resource_evidence.append(verify_resource_limits(backend, resource_plan))
                     backup_evidence.append(verify_backup_assets(native, installation, assets))
                 auth = http("/txapi/auth/admin/login", {"email": preparation["identity"]["email"], "password": password})
+                installer_evidence.append(verify_installed_entry(installation, backend, origin, auth))
                 browser_evidence.append(verify_browser_ingress(origin, auth, backend))
                 require(http(presentation + "presentation", token=auth["auth_data"])["version"] == version, "Worker retained an earlier package version")
                 require(http(presentation + "operations/status.get", {"input": {}}, auth["auth_data"])["version"] == version, "Real extension SDK operation did not use target code")
@@ -534,6 +583,7 @@ def main():
                 "resource_limits": resource_evidence, "native_backup_materials": backup_evidence,
                 "browser_ingress": browser_evidence,
                 "scheduler": scheduler_evidence,
+                "installer_entry_and_listener": installer_evidence,
                 "provider": "actual Go mTLS capability peer; no Node traffic in this image proof", "consumer": "actual admin login, catalog, order, extension HTTP and Chromium SDK host"})
             args.output.chmod(0o644)
             print("Native immutable image install, update and killed-executor recovery passed", flush=True)
