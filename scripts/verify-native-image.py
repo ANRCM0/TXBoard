@@ -444,7 +444,9 @@ def main():
                        TXBOARD_DB_PASSWORD=secrets.token_hex(24), TXBOARD_DB_ROOT_PASSWORD=secrets.token_hex(24), TXBOARD_BACKUP_RETENTION="0")
             if args.verify_resource_profile:
                 env['TXBOARD_RESOURCE_PROFILE'] = 'auto'
-            run(["bash", args.deploy_root / "install.sh", "--yes"], env=env, timeout=900)
+            install_output = run(["bash", args.deploy_root / "install.sh", "--yes"], env=env, timeout=900)
+            entry_command = f'Admin entry: sudo {installation / "txboard.sh"} --dir {installation} core-diagnose --show-admin-path'
+            require(entry_command in install_output, 'Installer entry guidance is not bound to its own manager and directory')
             backend = native.Docker(installation)
             first = backend.report("core:installation", "runtime", running=True)
             diagnosis = backend.report("core:diagnose", "--json", running=True)
@@ -584,6 +586,7 @@ def main():
                 "browser_ingress": browser_evidence,
                 "scheduler": scheduler_evidence,
                 "installer_entry_and_listener": installer_evidence,
+                "installer_summary_owned": True,
                 "provider": "actual Go mTLS capability peer; no Node traffic in this image proof", "consumer": "actual admin login, catalog, order, extension HTTP and Chromium SDK host"})
             args.output.chmod(0o644)
             print("Native immutable image install, update and killed-executor recovery passed", flush=True)

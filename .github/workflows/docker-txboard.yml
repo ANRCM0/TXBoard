@@ -345,14 +345,14 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: ANRCM0/TXBoard-Deploy
-          ref: 32c020e9d490c0b5cd5a6dcc96d3fb96f7dfb049
+          ref: 3d63d59d1fe8d29aa6f1659b2ff05899d7176e47
           path: .ci-native-deploy
           persist-credentials: false
       - name: Check out the same exact Deploy candidate for resource and recovery acceptance
         uses: actions/checkout@v4
         with:
           repository: ANRCM0/TXBoard-Deploy
-          ref: 32c020e9d490c0b5cd5a6dcc96d3fb96f7dfb049
+          ref: 3d63d59d1fe8d29aa6f1659b2ff05899d7176e47
           path: .ci-p4-native-deploy
           persist-credentials: false
       - uses: actions/setup-go@v5
