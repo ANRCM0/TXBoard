@@ -30,6 +30,7 @@ on:
       - "scripts/resolve-image-tags.sh"
       - "scripts/test-image-tags.sh"
       - "scripts/verify-native-image.py"
+      - "scripts/test-native-image-budget.py"
       - "contracts/releases/modular-core.v1.json"
       - ".github/workflows/docker-txboard.yml"
   pull_request:
@@ -57,6 +58,7 @@ on:
       - "scripts/resolve-image-tags.sh"
       - "scripts/test-image-tags.sh"
       - "scripts/verify-native-image.py"
+      - "scripts/test-native-image-budget.py"
       - "contracts/releases/modular-core.v1.json"
       - ".github/workflows/docker-txboard.yml"
   workflow_dispatch:
@@ -199,6 +201,8 @@ jobs:
           submodules: true
       - name: Test image tag classification
         run: bash scripts/test-image-tags.sh
+      - name: Test ingress budget expiry and anti-splitting assertions
+        run: python3 -B scripts/test-native-image-budget.py
       - name: Verify backup integrity and mysqldump failure handling
         run: bash scripts/test-backup.sh backup.sh
       - name: Validate Compose
@@ -341,14 +345,14 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: ANRCM0/TXBoard-Deploy
-          ref: aaea3914aca6ff11876b187c1e26cf40d443303d
+          ref: 3d63d59d1fe8d29aa6f1659b2ff05899d7176e47
           path: .ci-native-deploy
           persist-credentials: false
       - name: Check out the same exact Deploy candidate for resource and recovery acceptance
         uses: actions/checkout@v4
         with:
           repository: ANRCM0/TXBoard-Deploy
-          ref: aaea3914aca6ff11876b187c1e26cf40d443303d
+          ref: 3d63d59d1fe8d29aa6f1659b2ff05899d7176e47
           path: .ci-p4-native-deploy
           persist-credentials: false
       - uses: actions/setup-go@v5

@@ -22,6 +22,9 @@ Start with the [development guide](docs/development.md), the
 [administrator](docs/api/core-admin-api.md) and
 [user](docs/api/core-user-api.md) operation references.
 
+For production installation, interrupted-deployment recovery and the local
+`core:diagnose` report, see [installation and diagnostics](docs/deployment.md).
+
 The production image runs its own supervised scheduler. See the
 [runtime scheduler guide](docs/runtime-scheduler.md) for task ownership,
 health checks and container diagnosis.
