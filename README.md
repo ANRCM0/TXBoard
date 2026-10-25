@@ -22,6 +22,10 @@ Start with the [development guide](docs/development.md), the
 [administrator](docs/api/core-admin-api.md) and
 [user](docs/api/core-user-api.md) operation references.
 
+The production image runs its own supervised scheduler. See the
+[runtime scheduler guide](docs/runtime-scheduler.md) for task ownership,
+health checks and container diagnosis.
+
 Development documentation describes the current source and its ownership rules.
 Acceptance logs, screenshots, machine-local snapshots and release histories belong
 in CI artifacts or Git history rather than checked-in documentation.

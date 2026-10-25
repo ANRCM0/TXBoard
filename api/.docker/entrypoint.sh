@@ -25,6 +25,12 @@ else
 fi
 export OCTANE_HOST OCTANE_PORT WS_HOST WS_PORT
 export OCTANE_INTERNAL_PORT="${OCTANE_PORT}"
+: "${ENABLE_SCHEDULER:=true}"
+case "$ENABLE_SCHEDULER" in
+    true|false) ;;
+    *) echo '[entrypoint] ENABLE_SCHEDULER must be true or false' >&2; exit 1 ;;
+esac
+export ENABLE_SCHEDULER
 
 # ---------------------------------------------------------------------------
 # Auto-tune worker counts based on the host (CPU + memory).
@@ -197,22 +203,28 @@ redis_reachable() {
     esac
 }
 
+# These pre-supervisor probes read the database and must not require the
+# embedded Redis process that Supervisor has not started yet.
+bootstrap_artisan() {
+    CACHE_DRIVER=array SESSION_DRIVER=array SETTING_CACHE_STORE=array php /www/artisan "$@"
+}
+
 # Never trust INSTALLED in .env by itself. A stale marker paired with an
 # empty/new database previously caused the runtime updater to create tables/plugins
 # while skipping the installer, leaving a panel with no administrator.
 if echo " $* " | grep -q ' txboard:install '; then
     echo "[entrypoint] Skipping txboard:update while running the installer."
 else
-    php /www/artisan txboard:assert-native-schema --allow-unavailable --no-interaction || {
+    bootstrap_artisan txboard:assert-native-schema --allow-unavailable --no-interaction || {
         echo "[entrypoint] FATAL: native TXBoard schema required. Refusing to boot against an incompatible database." >&2
         exit 1
     }
 fi
 if echo " $* " | grep -q ' txboard:install '; then
     echo "[entrypoint] Skipping txboard:update while running the installer."
-elif php /www/artisan core:installation native-managed --no-interaction >/dev/null 2>&1; then
+elif bootstrap_artisan core:installation native-managed --no-interaction >/dev/null 2>&1; then
     echo "[entrypoint] Native installation is managed by the native runtime; legacy updater is not applicable."
-elif php /www/artisan txboard:install-status --no-interaction >/dev/null 2>&1; then
+elif bootstrap_artisan txboard:install-status --no-interaction >/dev/null 2>&1; then
     if redis_reachable; then
         echo "[entrypoint] Running txboard:update (installed database confirmed, redis reachable)..."
         php /www/artisan txboard:update --no-interaction || {
@@ -231,7 +243,7 @@ else
     echo "[entrypoint] Skipping txboard:update (database has no administrator yet or is unavailable)."
 fi
 
-echo "[entrypoint] Starting services (caddy=${ENABLE_CADDY} web=${ENABLE_WEB} horizon=${ENABLE_HORIZON} ws=${ENABLE_WS_SERVER})..."
+echo "[entrypoint] Starting services (caddy=${ENABLE_CADDY} web=${ENABLE_WEB} horizon=${ENABLE_HORIZON} scheduler=${ENABLE_SCHEDULER} ws=${ENABLE_WS_SERVER})..."
 # Drop stale Octane/WorkerMan state files so the new master does not signal
 # PIDs left over from a previous container run (causes Swoole kill EPERM).
 rm -f /www/storage/logs/octane-server-state.json \
