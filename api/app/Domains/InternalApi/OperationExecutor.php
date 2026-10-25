@@ -227,7 +227,11 @@ final class OperationExecutor
             if ($receipt->state === 'completed' && !$currentOwnerResult) {
                 $data = json_decode(Crypt::decryptString($receipt->response_json), true, flags: JSON_THROW_ON_ERROR);
                 $data['request_id'] = TxapiResponse::requestId($request);
-                return response()->json($data, $receipt->response_status);
+                $replay = response()->json($data, $receipt->response_status);
+                if (str_starts_with($operation, 'network.nodes.connections.')) {
+                    $replay->header('Cache-Control', 'private, no-store, max-age=0')->header('Pragma', 'no-cache');
+                }
+                return $replay;
             }
             // Generic writes with unknown outcomes are never re-executed.
             // Domain workflows may safely recover using their original key.
@@ -284,7 +288,7 @@ final class OperationExecutor
             $meta = OperationSchemas::meta($operation, $meta);
             $result = TxapiResponse::success($request, $projected, $meta, $result->getStatusCode());
             if (in_array($operation, ['network.machines.credentials.get', 'network.nodes.configuration.get',
-                'network.nodes.material.generate'], true)) {
+                'network.nodes.material.generate'], true) || str_starts_with($operation, 'network.nodes.connections.')) {
                 $result->header('Cache-Control', 'private, no-store, max-age=0')->header('Pragma', 'no-cache');
             }
         }

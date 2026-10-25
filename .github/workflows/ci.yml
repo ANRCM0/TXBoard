@@ -858,6 +858,84 @@ jobs:
           python3 scripts/check-node-component.py
           python3 scripts/verify-native-c2.py
 
+  native-node-connections:
+    name: Native Node connection management
+    needs: changes
+    if: needs.changes.outputs.native == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      APP_ENV: testing
+      DB_CONNECTION: mysql
+      DB_HOST: 127.0.0.1
+      DB_PORT: '3306'
+      DB_DATABASE: txboard_native_machine_test
+      DB_USERNAME: txboard_native_machine
+      DB_PASSWORD: native-machine-ci-only
+      REDIS_PORT: '6379'
+      REDIS_DB: '14'
+      REDIS_CACHE_DB: '15'
+      CGO_ENABLED: '1'
+      CORE_CANDIDATE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: native-machine-root-ci-only
+          MYSQL_DATABASE: txboard_native_machine_test
+          MYSQL_USER: txboard_native_machine
+          MYSQL_PASSWORD: native-machine-ci-only
+        ports: ['3306:3306']
+        options: --health-cmd="mysqladmin ping -h 127.0.0.1 -pnative-machine-root-ci-only" --health-interval 5s --health-timeout 5s --health-retries 24
+      redis:
+        image: redis:7.4
+        ports: ['6379:6379']
+        options: --health-cmd="redis-cli ping" --health-interval 5s --health-retries 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.CORE_CANDIDATE_SHA }}
+          submodules: true
+          persist-credentials: false
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mbstring, pdo_mysql, pdo_sqlite, curl, openssl, sodium, bcmath, redis, fileinfo, opcache, swoole-6.2.3
+          coverage: none
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: node/go.mod
+          cache-dependency-path: node/go.sum
+      - name: Prepare exclusive Core and Node fixture
+        run: |
+          set -euo pipefail
+          if ! command -v mysql && ! command -v mariadb; then
+            sudo apt-get update
+            sudo apt-get install -y default-mysql-client
+          fi
+          cd api
+          composer install --no-interaction --prefer-dist
+          cp .env.example .env
+          php artisan key:generate
+      - name: Exercise exact Core candidate and pinned native Node command ownership
+        run: |
+          python3 scripts/check-node-component.py
+          python3 -m unittest discover -s node/scripts/tests/node-native-machine -p php_server_test.py -v
+          python3 node/scripts/tests/node-native-machine/run.py api node "$RUNNER_TEMP/native-node-connections" --candidate-core-sha "$CORE_CANDIDATE_SHA"
+      - name: Retain bounded non-secret connection evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: native-node-connections-${{ env.CORE_CANDIDATE_SHA }}
+          if-no-files-found: error
+          path: |
+            ${{ runner.temp }}/native-node-connections/sources.json
+            ${{ runner.temp }}/native-node-connections/compatibility-preflight.json
+            ${{ runner.temp }}/native-node-connections/result.json
+
   static:
     name: Static and documentation
     runs-on: ubuntu-latest
@@ -897,7 +975,7 @@ jobs:
   acceptance:
     name: CI acceptance
     if: ${{ always() }}
-    needs: [changes, static, api, mysql-regression, installation-bootstrap, native-admin-management, native-billing-domain, native-subscription-domain, web, browser-native-http, native-c2-live]
+    needs: [changes, static, api, mysql-regression, installation-bootstrap, native-admin-management, native-billing-domain, native-subscription-domain, web, browser-native-http, native-c2-live, native-node-connections]
     runs-on: ubuntu-latest
     steps:
       - name: Require every selected check to succeed

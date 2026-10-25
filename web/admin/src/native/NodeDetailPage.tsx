@@ -23,6 +23,7 @@ import { LineChart } from '../components/charts/ReferenceCharts'
 import { nodeTrafficHistory, type OverviewRange } from './overviewCharts'
 import { NodeEditor } from './NodeEditor'
 import { useAdminConfirmation } from './useAdminConfirmation'
+import { NodeConnections } from './NodeConnections'
 
 
 export function NodeDetailPage() {
@@ -59,7 +60,8 @@ export function NodeDetailPage() {
   const recoveryBlocked = query.isFetching || query.isError || !node || (!!management.pending && 'node_id' in management.pending.input && management.pending.input.node_id !== node.id)
   return <div className="native-management-page network-reference-page network-node-detail-page">
     <PageHeader title={t("节点详情")} description={t("查看节点及其归属，管理显示、启用状态和节点计数")} action={<><Link className="button" to="/server/manage">{t("返回节点列表")}</Link><button className="button" disabled={query.isFetching || management.state.busy} onClick={() => void management.refresh()}><RefreshCw size={15} aria-hidden="true" />{t("刷新节点")}</button><button type="button" className="button" disabled={locked} onClick={() => setEditing(true)}>{t("编辑完整配置")}</button></>} />
-    <NetworkRecovery management={management} blocked={recoveryBlocked} />
+    {!management.pending?.operation.startsWith('network.nodes.connections.') || !('node_id' in management.pending.input) || management.pending.input.node_id !== node?.id
+      ? <NetworkRecovery management={management} blocked={recoveryBlocked} /> : null}
     <ManagementFeedback error={query.error} loading={query.isFetching} onRetry={() => void management.refresh()} notFoundMessage={t("节点不存在或已被删除。")} />
     {node ? <>
       <DetailSection label={t("节点配置概况")} title={node.name} description={t("节点 #{id} · {protocol}", { id: node.id, protocol: node.type })}
@@ -86,6 +88,7 @@ export function NodeDetailPage() {
           </>}
         <p className="network-help">{t("每日原始上传与下载之和 · 按已结算批次结束日期（UTC）汇总 · 1 GB = 10⁹ 字节")}</p>
       </DetailSection>
+      <NodeConnections key={node.id} nodeId={node.id} blocked={query.isFetching || management.denied} />
       <DetailSection label={t("节点操作")} title={t("节点操作")} icon={<Power size={17} />} className="network-settings-card"
         description={t("重置节点计数只影响节点统计 · 用户订阅额度请使用流量重置入口")}
         actions={<Popover label={t("节点操作说明")}>

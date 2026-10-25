@@ -27,6 +27,7 @@ import uuid
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.dont_write_bytecode = True
+SCHEDULER_OBSERVATIONS = []
 
 
 def require(value, message):
@@ -119,7 +120,9 @@ def verify_scheduler(backend, exercise_restart=False):
         backend.compose('exec', '-T', 'txboard', *control, 'start', target)
 
     commands = ['core:subscriptions-tick', 'check:order', 'core:native-work', 'core:module-work']
+    started = time.monotonic()
     deadline = time.monotonic() + 100
+    output = ''
     while time.monotonic() < deadline:
         output = run(['docker', 'logs', '--since', since, container])
         output = re.sub(r'\x1b\[[0-9;]*[A-Za-z]', '', output)
@@ -128,6 +131,20 @@ def verify_scheduler(backend, exercise_restart=False):
             break
         time.sleep(2)
     else:
+        # Keep closed task labels and counters; container logs may contain secrets.
+        inspected = json.loads(backend.run(['inspect', '--type', 'container', container]))[0]
+        processes = run(['docker', 'top', container, '-eo', 'pid,args']).splitlines()
+        observation = {'exercise_restart': exercise_restart, 'elapsed_seconds': round(time.monotonic()-started, 3),
+                       'container_oom_killed': inspected['State'].get('OOMKilled') is True,
+                       'container_memory_bytes': inspected['HostConfig']['Memory'],
+                       'schedule_workers': sum('artisan schedule:work' in line for line in processes),
+                       'schedule_runs': sum('artisan schedule:run' in line for line in processes),
+                       'commands': {command: {'started': bool(re.search(r'Running \[[^\r\n]*'+re.escape(command), output)),
+                                              'done': bool(re.search(r'Running \[[^\r\n]*'+re.escape(command)+r'[^\r\n]*\bDONE\b', output)),
+                                              'failed': bool(re.search(r'Running \[[^\r\n]*'+re.escape(command)+r'[^\r\n]*\bFAIL\b', output))}
+                                    for command in commands}}
+        SCHEDULER_OBSERVATIONS.append(observation)
+        print(json.dumps({'scheduler_diagnostic': observation}), flush=True)
         raise RuntimeError('Supervised scheduler did not complete all four native tasks within 100 seconds')
     backend.compose('exec', '-T', 'txboard', 'php', '/opt/txboard/healthcheck.php')
     return {'single_supervised_worker': True, 'root_only_control_socket': True,
@@ -158,8 +175,20 @@ def verify_backup_assets(native, installation, assets):
             'live_assets_preserved': True}
 
 
+def ingress_probe_observation(before, after, ttl_millis, elapsed_millis):
+    added, removed = after-before, before-after
+    valid_ttl = ttl_millis == -2 or 0 <= ttl_millis <= 60000
+    expiry_consistent = not removed or ttl_millis == -2 or elapsed_millis >= ttl_millis
+    return {'initial_buckets': len(before), 'final_buckets': len(after),
+            'added_buckets': len(added), 'removed_buckets': len(removed),
+            'initial_ttl_millis': ttl_millis, 'elapsed_millis': round(elapsed_millis, 3),
+            'expiry_consistent': expiry_consistent,
+            'accepted': len(before) == 1 and not added and valid_ttl and expiry_consistent}
+
+
 def verify_browser_ingress(origin, auth, backend):
     """Exercise the built image's public Caddy listener, without a Gateway process."""
+    probe_started = time.monotonic_ns()
     def request(path, body=None, headers=None, expected=200):
         supplied = {'Accept': 'application/json', **(headers or {})}
         data = None if body is None else json.dumps(body).encode()
@@ -205,19 +234,29 @@ def verify_browser_ingress(origin, auth, backend):
     # Default Caddy trust is loopback only; the Docker bridge peer is untrusted.
     # Rotating XFF must hit the existing socket budget.
     def ingress_buckets():
-        return set(backend.compose('exec', '-T', 'txboard', 'redis-cli', '-s', '/data/redis.sock',
-                                  '-n', '1', '--raw', '--scan', '--pattern', '*core-browser:ingress:*').splitlines())
+        output = backend.compose('exec', '-T', 'txboard', 'redis-cli', '-s', '/data/redis.sock',
+                                 '-n', '1', '--raw', '--scan', '--pattern', '*core-browser:ingress:*')
+        return {key for key in output.splitlines() if key}
     buckets = ingress_buckets()
+    print(json.dumps({'browser_ingress_initial_observation': {
+        'buckets':len(buckets), 'elapsed_millis':round((time.monotonic_ns()-probe_started)/1000000, 3)}}), flush=True)
     require(len(buckets) == 1, 'Image fixture must have one socket ingress budget before XFF rotation')
+    ttl_requested = time.monotonic_ns()
+    ttl = backend.compose('exec', '-T', 'txboard', 'redis-cli', '-s', '/data/redis.sock',
+                          '-n', '1', '--raw', 'PTTL', next(iter(buckets))).strip()
+    require(re.fullmatch(r'-?[0-9]{1,9}', ttl) is not None, 'Actual ingress budget TTL unavailable')
     for forwarded in ['198.51.100.7', '203.0.113.9, 198.51.100.8']:
         request('/gateway/v1/bootstrap', headers={'X-Forwarded-For': forwarded,
                 'X-Core-Browser-Client-IP': '203.0.113.10'})
-    require(ingress_buckets() == buckets, 'Untrusted XFF split the actual image ingress budget')
+    after = ingress_buckets()
+    observation = ingress_probe_observation(buckets, after, int(ttl), (time.monotonic_ns()-ttl_requested)/1000000)
+    print(json.dumps({'browser_ingress_diagnostic': observation}), flush=True)
+    require(observation['accepted'], 'Untrusted XFF changed the actual image ingress budget outside its original TTL')
     return {'public_caddy_listener': True, 'same_process_bootstrap_and_discovery': True,
             'bearer_admin_read': True, 'current_admin_path_required': True, 'no_session_cookie': True,
             'cookie_only_rejected': True, 'cross_origin_and_host_rejected': True,
             'service_header_rejected': True, 'caddy_overwrites_client_ip_header': True,
-            'untrusted_xff_cannot_split_ingress_budget': True}
+            'untrusted_xff_cannot_split_ingress_budget': True, 'ingress_budget_observation': observation}
 
 
 def purchase_diagnostic(installation, email, offer_id, key):
@@ -535,7 +574,7 @@ def main():
                         r'#\d+ /www/(app/[A-Za-z0-9_./]+\.php)\((\d+)\): ([A-Za-z0-9_\\]+)(?:->|::)([A-Za-z0-9_]+)\(',
                         application_log.read_text(errors='replace')[-1048576:])[-12:]])
             diagnostic = {"schema": "modular-native-image-proof/v1", "status": "failed", "stage": stage,
-                          "error_codes": codes, "application_frames": frames[-12:]}
+                          "error_codes": codes, "application_frames": frames[-12:], "scheduler": SCHEDULER_OBSERVATIONS}
             args.output.parent.mkdir(parents=True, exist_ok=True)
             write(args.output, diagnostic)
             args.output.chmod(0o644)

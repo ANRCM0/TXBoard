@@ -8,7 +8,7 @@ import { nativeAdditionsFixture } from './admin-native-additions-fixture.mjs'
 const requestId = '12345678-1234-4234-8234-123456789abc'
 const stamp = 1792368000
 const metadata = JSON.parse(await readFile(new URL('../../contracts/core-api/admin-settings.v1.json', import.meta.url), 'utf8'))
-const managed = /^(?:audit\.logs\.|platform\.(?:modules\.|queue\.)|settings\.configuration\.|notifications\.mail-templates\.|billing\.admin-payment-|network\.(?:nodes\.get$|nodes\.protocols\.list$|nodes\.configuration\.get$|nodes\.traffic-history\.get$|nodes\.ordering\.[a-z]+$|nodes\.batch-[a-z-]+$|machines\.)|identity\.accounts\.get$|identity\.accounts\.status\.update$|subscription\.admin\.get$|subscription\.lifecycle\.(?:resets[.]list|reset|suspend|resume|revoke|expire)$|commerce\.admin-orders\.list$)/
+const managed = /^(?:audit\.logs\.|platform\.(?:modules\.|queue\.)|settings\.configuration\.|notifications\.mail-templates\.|billing\.admin-payment-|network\.(?:nodes\.connections\.[a-z.]+$|nodes\.get$|nodes\.protocols\.list$|nodes\.configuration\.get$|nodes\.traffic-history\.get$|nodes\.ordering\.[a-z]+$|nodes\.batch-[a-z-]+$|machines\.)|identity\.accounts\.get$|identity\.accounts\.status\.update$|subscription\.admin\.get$|subscription\.lifecycle\.(?:resets[.]list|reset|suspend|resume|revoke|expire)$|commerce\.admin-orders\.list$)/
 
 /** Built admin UI with schema-checked synthetic browser ingress; no live Core acceptance is implied. */
 export async function managementFixture(browser, viewport) {
@@ -53,6 +53,10 @@ export async function managementFixture(browser, viewport) {
   Object.assign(state, { denied: new Set(), settings, modules, machine, detailNode: node, subscription, lifecycle, payment,
     originalSettingsVersion: settings.version, originalPaymentVersion: payment.version, originalSubscriptionVersion: subscription.subscription_version })
   const additions = nativeAdditionsFixture(state)
+  const connectionRequests = new Map(), connectionKeys = new Map()
+  const connectionId = 'a'.repeat(32) + ':9007199254740995'
+  let connectionPresent = true
+  state.connectionId = connectionId
 
   await context.route('**/gateway/v1/core/admin/operations/**', async route => {
     const request = route.request(), operation = new URL(request.url()).pathname.split('/operations/')[1]
@@ -117,6 +121,25 @@ export async function managementFixture(browser, viewport) {
       const native = nativeNetworkRead(operation, input, { node, machine })
       if (native) return send(native)
       if (operation === 'network.nodes.get') { assert.equal(input.node_id, node.id); return send(node) }
+      if (operation === 'network.nodes.connections.list.request' || operation === 'network.nodes.connections.close') {
+        assert.equal(input.node_id, node.id)
+        if (connectionKeys.has(key)) return send(connectionKeys.get(key))
+        const action = operation.endsWith('.close') ? 'close' : 'list'
+        const id = 'nco_' + (connectionRequests.size + 1).toString(16).padStart(32, '0')
+        const receipt = { request_id: id, node_id: node.id, action, deadline: Math.floor(Date.now() / 1000) + 15,
+          status: 'pending', connections: [], total: 0, next: '', connection_id: input.connection_id ?? '' }
+        const rows = connectionPresent ? [{ id: connectionId, user_id: '9007199254740997', transport: 'tcp' }] : []
+        const final = { ...receipt, status: action === 'list' ? 'complete' : 'closed',
+          connections: action === 'list' ? rows : [], total: action === 'list' ? rows.length : 0 }
+        if (action === 'close') { assert.equal(input.connection_id, connectionId); connectionPresent = false }
+        connectionKeys.set(key, receipt); connectionRequests.set(id, final)
+        return send(receipt)
+      }
+      if (operation === 'network.nodes.connections.result.get') {
+        assert.equal(input.node_id, node.id)
+        const receipt = connectionRequests.get(input.request_id); assert.ok(receipt)
+        return send(receipt)
+      }
       if (operation === 'network.nodes.traffic-history.get') {
         assert.deepEqual(input.node_ids, [node.id])
         const now = Math.floor(Date.now() / 1000), today = new Date(now * 1000)

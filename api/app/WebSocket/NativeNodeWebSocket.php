@@ -3,6 +3,7 @@
 namespace App\WebSocket;
 
 use App\Domains\Network\NativeNodeReport;
+use App\Domains\Network\NativeNodeConnections;
 use App\Domains\Network\NodeReportError;
 use App\Http\Middleware\TxNodeAuth;
 use App\Models\Server;
@@ -57,6 +58,7 @@ final class NativeNodeWebSocket
         $bearer = $request->bearerToken();
         $conn->txnodeNative = true;
         $conn->txnodeCredentialHash = hash('sha256', $bearer);
+        $conn->txnodeConnectionEpoch = bin2hex(random_bytes(16));
         $conn->lastPongAt = time();
 
         if ($machine instanceof ServerMachine) {
@@ -112,12 +114,17 @@ final class NativeNodeWebSocket
                 return;
             }
 
-            if (!in_array($event, ['traffic.report', 'sync.request'], true)) {
+            if (!in_array($event, ['traffic.report', 'sync.request', NativeNodeConnections::RESULT], true)) {
                 throw new \InvalidArgumentException('UNKNOWN_EVENT');
             }
             // Every inbound node-scoped event is authorized against the live
             // machine membership / server-token state, not a client-supplied ID.
             $node = $this->scopedNode($conn, $frame['data']);
+            if ($event === NativeNodeConnections::RESULT) {
+                $accepted = app(NativeNodeConnections::class)->accept($node, $conn, $frame['data']);
+                $this->send($conn, 'ops.node.connections.ack', ['accepted' => $accepted], $requestId);
+                return;
+            }
             if ($event === 'sync.request') {
                 NativeNodePush::pushFullSync($node);
                 $this->send($conn, 'sync.ack', ['node_id' => (int) $node->id], $requestId);
@@ -195,7 +202,7 @@ final class NativeNodeWebSocket
             'heartbeat_interval_seconds' => 55,
             'heartbeat_timeout_seconds' => NodeSyncService::WS_TTL_SECONDS,
             'capabilities' => ['sync.config', 'sync.users', 'sync.nodes', 'traffic.report', 'traffic.ack',
-                'heartbeat.ping'],
+                'heartbeat.ping', NativeNodeConnections::REQUEST, NativeNodeConnections::RESULT],
         ]);
     }
 

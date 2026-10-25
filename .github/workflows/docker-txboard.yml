@@ -370,6 +370,8 @@ jobs:
           npm run build:sdk
           npm run build --workspace @txboard/module-host
           npx playwright install --with-deps chromium
+      - name: Verify ingress observation retains the original budget identity and expiry
+        run: python3 -m unittest discover -s scripts/tests -p test_verify_native_image.py -v
       - name: Native immutable image installation, module update and killed-executor recovery
         run: sudo -E python3 -B scripts/verify-native-image.py --deploy-root "$GITHUB_WORKSPACE/.ci-native-deploy" --provider-binary "$RUNNER_TEMP/native-image-provider"
       - name: P4 paired image resource limits and complete native backup recovery

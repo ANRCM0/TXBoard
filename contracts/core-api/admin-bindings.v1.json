@@ -753,6 +753,27 @@
       "parameters": {},
       "routeParameters": {},
       "payload": null
+    },
+    "network.nodes.connections.list.request": {
+      "controller": "NativeNodeConnectionsController",
+      "method": "listConnections",
+      "parameters": {},
+      "routeParameters": {},
+      "payload": null
+    },
+    "network.nodes.connections.close": {
+      "controller": "NativeNodeConnectionsController",
+      "method": "closeConnection",
+      "parameters": {},
+      "routeParameters": {},
+      "payload": null
+    },
+    "network.nodes.connections.result.get": {
+      "controller": "NativeNodeConnectionsController",
+      "method": "result",
+      "parameters": {},
+      "routeParameters": {},
+      "payload": null
     }
   }
 }

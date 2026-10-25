@@ -23,7 +23,7 @@ class PolicyTests(unittest.TestCase):
         policy.validate_ci(self.workflow)
 
     def test_removing_a_database_or_integration_job_is_rejected(self):
-        for name in ("native-billing-domain", "browser-native-http", "native-c2-live"):
+        for name in ("native-billing-domain", "browser-native-http", "native-c2-live", "native-node-connections"):
             with self.subTest(job=name):
                 changed = copy.deepcopy(self.workflow)
                 del changed["jobs"][name]
@@ -93,6 +93,15 @@ class PolicyTests(unittest.TestCase):
         for result in ("failure", "cancelled"):
             with self.subTest(result=result):
                 self.assertNotEqual(self.aggregate({"native-billing-domain": result}).returncode, 0)
+                self.assertNotEqual(self.aggregate({"native-node-connections": result}).returncode, 0)
+
+    def test_connection_gate_cannot_drop_the_explicit_core_candidate(self):
+        changed = copy.deepcopy(self.workflow)
+        for step in changed['jobs']['native-node-connections']['steps']:
+            if 'run' in step:
+                step['run'] = step['run'].replace('--candidate-core-sha "$CORE_CANDIDATE_SHA"', '')
+        with self.assertRaises(ValueError):
+            policy.validate_ci(changed)
 
     def test_aggregate_requires_successful_selection_and_static_checks(self):
         for name in ("changes", "static"):

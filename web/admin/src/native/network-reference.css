@@ -3,6 +3,8 @@
 .network-reference-page { gap: 20px; }
 .network-reference-page .network-copy-value { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 5px; max-width: 100%; }
 .network-reference-page .network-copy-value > code { white-space: normal; overflow-wrap: anywhere; }
+.admin-shell .network-reference-page .network-copy-value.network-connection-id { white-space: normal; align-items: flex-start; }
+.admin-shell .network-reference-page .network-copy-value.network-connection-id > code { min-width: 0; flex: 1; white-space: normal; overflow-wrap: anywhere; }
 .network-reference-page .network-protocol { display: inline-flex; align-items: center; padding: 3px 7px; border-radius: 5px; color: var(--primary); background: color-mix(in srgb, var(--primary) 8%, transparent); font-size: 10px; font-weight: 650; text-transform: uppercase; letter-spacing: .04em; }
 .network-reference-page .network-counter-note { margin: 0; padding: 10px 20px; color: var(--muted); font-size: 11px; border-bottom: 1px solid var(--border); line-height: 1.6; }
 .network-reference-page .network-field-hint { color: var(--muted); font-size: 11px; font-weight: 400; line-height: 1.7; }
