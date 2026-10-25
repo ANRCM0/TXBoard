@@ -32,7 +32,7 @@ round has a concrete observed source problem and regression coverage.
 | 7 | Field errors hid the original instructions and lacked a direct error relationship. | Instructions remain available with errors, caller descriptions are preserved, and required/error semantics follow the control. |
 | 8 | Clearing a number could become zero; exiting configuration editing lost focus. | Empty numeric drafts remain empty, native constraints prevent new invalid writes, edit focus is restored and save state is announced. |
 | 9 | Invalid login-background URLs were explained away from their field. | Local error association, input focus/scroll and immediate correction feedback; no draft image fetch or implicit save. |
-| 10 | Slow-route focus expired early, language changes could invalidate search selection, and sign-in errors only lived in a toast. | Bounded observation waits for a visible route title without overriding later user interaction; search selection stays valid and empty results can be cleared; login failure remains visible and duplicate submission is guarded. |
+| 10 | Slow-route focus expired early, language changes could invalidate search selection, sign-in errors only lived in a toast, and old login text colors did not follow the inverted dark-theme panel. | Bounded observation waits for a visible route title without overriding later user interaction; search selection stays valid and empty results can be cleared; login failure remains visible, duplicate submission is guarded and branding text inherits the panel's contrasting foreground. |
 
 Detailed implementation records: `admin-experience-rounds-dialogs.md`,
 `admin-experience-rounds-lists.md` and `admin-experience-rounds-forms.md`.
@@ -43,6 +43,10 @@ Independent source review also found and corrected inconsistent visible/accessib
 labels on the clear-selection action, hidden retained route titles in Suspense,
 and Home/End handling that would otherwise override search-text editing. These
 corrections have focused regression cases.
+
+Screenshot review also caught low-contrast legacy login copy on the light panel
+used in dark mode. The panel's text now inherits its theme foreground, with
+production-browser contrast checks for all five text groups in both themes.
 
 ## Contracts
 
@@ -63,7 +67,7 @@ browser and fixed-image acceptance run in GitHub Actions against the final sourc
 Existing `verify:web`, production browser groups, actual Vite browser checks,
 Core/MySQL HTTP checks and performance budgets remain enabled.
 
-New production browser scenarios cover persistent failed-login feedback,
+New production browser scenarios cover light/dark login-text contrast, persistent failed-login feedback,
 command-search recovery, blank numeric settings with no write, and local unsafe
 background correction. Existing nested-draft, unknown-result, credential, permission,
 exact-money, desktop/mobile and language cases remain in place. CI screenshots

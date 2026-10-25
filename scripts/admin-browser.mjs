@@ -67,6 +67,26 @@ const order = { id: '7', user_id: account.id, trade_no: 'ORDER-A', plan_id: '8',
   type: 1, status: 0, amount_minor: '9007199254740993', currency: 'USD', plan: { id: '8', name: 'Frozen Plus' },
   created_at: new Date(Date.now() - 86400000).toISOString(), paid_at: null, purchase_terms_version: 'tx-core.purchase-terms/v2' }
 function passed(name) { checks.push(name); console.log('PASS ' + name) }
+async function assertLoginContrast(page) {
+  const values = await page.locator('.admin-auth-aside').evaluate(aside => {
+    const luminance = value => {
+      const channels = value.match(/[\d.]+/g)?.slice(0, 3).map(Number)
+      if (!channels || channels.length !== 3) throw new Error('Expected an opaque computed RGB color')
+      const linear = channels.map(channel => {
+        const normalized = channel / 255
+        return normalized <= .04045 ? normalized / 12.92 : ((normalized + .055) / 1.055) ** 2.4
+      })
+      return linear[0] * .2126 + linear[1] * .7152 + linear[2] * .0722
+    }
+    const background = luminance(getComputedStyle(aside).backgroundColor)
+    return [...aside.querySelectorAll('.admin-auth-aside-brand strong, .admin-auth-aside-brand small, .admin-auth-aside-copy > span, .admin-auth-aside-copy p, .admin-auth-aside-foot')].map(element => {
+      const foreground = luminance(getComputedStyle(element).color)
+      return { text: element.textContent, ratio: (Math.max(foreground, background) + .05) / (Math.min(foreground, background) + .05) }
+    })
+  })
+  assert.equal(values.length, 5)
+  for (const value of values) assert.ok(value.ratio >= 4.5, `Readable login text: ${value.text} (${value.ratio})`)
+}
 function session(id, name) {
   return { id, name, abilities: ['admin'], created_at: '2026-10-18T08:00:00Z',
     last_used_at: null, updated_at: null, expires_at: null }
@@ -208,11 +228,14 @@ try {
   const { page, state } = desktop
   await page.goto(origin + '/admin/sign-in')
   await page.getByRole('heading', { name: '管理员登录' }).waitFor()
+  await assertLoginContrast(page)
   await page.screenshot({ path: output + '/login-desktop.png', fullPage: true })
   await page.getByRole('button', { name: '主题设置', exact: true }).click()
   await page.getByRole('button', { name: '深色模式', exact: true }).click()
   assert.equal(await page.getByRole('button', { name: '主题设置', exact: true }).getAttribute('aria-expanded'), 'false')
   await page.waitForFunction(() => document.documentElement.dataset.theme === 'dark')
+  await assertLoginContrast(page)
+  passed('login branding and guidance remain readable in both light and dark modes')
   await page.screenshot({ path: output + '/login-dark.png', fullPage: true })
   state.loginStatus = 401
   await page.getByRole('textbox', { name: '邮箱', exact: true }).fill('admin@example.test')
