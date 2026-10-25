@@ -900,7 +900,7 @@ jobs:
       - uses: shivammathur/setup-php@v2
         with:
           php-version: '8.2'
-          extensions: mbstring, pdo_mysql, pdo_sqlite, curl, openssl, sodium, bcmath, redis, fileinfo
+          extensions: mbstring, pdo_mysql, pdo_sqlite, curl, openssl, sodium, bcmath, redis, fileinfo, opcache
           coverage: none
       - uses: actions/setup-node@v4
         with:
@@ -923,6 +923,7 @@ jobs:
       - name: Exercise exact Core candidate and pinned native Node command ownership
         run: |
           python3 scripts/check-node-component.py
+          python3 -m unittest discover -s node/scripts/tests/node-native-machine -p php_server_test.py -v
           python3 node/scripts/tests/node-native-machine/run.py api node "$RUNNER_TEMP/native-node-connections" --candidate-core-sha "$CORE_CANDIDATE_SHA"
       - name: Retain bounded non-secret connection evidence
         if: always()
