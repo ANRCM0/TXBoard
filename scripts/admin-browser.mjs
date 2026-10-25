@@ -234,7 +234,7 @@ try {
   await page.getByRole('button', { name: '搜索菜单和功能', exact: true }).click()
   const search = page.getByRole('combobox', { name: '搜索菜单和功能', exact: true })
   await search.press('End')
-  assert.match(await page.getByRole('option', { selected: true }).innerText(), /\/config\/email\/templates/)
+  assert.match(await page.locator('.admin-command-dialog').getByRole('option', { selected: true }).innerText(), /\/config\/email\/templates/)
   await search.fill('no-such-menu')
   await page.getByText('没有匹配项', { exact: true }).waitFor()
   await page.getByRole('button', { name: '清空搜索', exact: true }).click()
