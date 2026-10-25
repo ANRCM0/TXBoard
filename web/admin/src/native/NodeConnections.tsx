@@ -105,7 +105,7 @@ export function NodeConnections({ nodeId, blocked }: { nodeId: string; blocked: 
         <p className="network-help">{t('快照共 {total} 条连接', { total: snapshot.total })}</p>
         <DataTable rows={snapshot.connections} rowKey={row => row.id} label={t('节点实时连接')} empty={t('暂无活动连接')}
           mobilePrimaryKey="id" columns={[
-            { key: 'id', header: t('连接 ID'), render: row => <span className="network-copy-value"><code>{row.id}</code><CopyButton value={row.id} label={t('复制连接 ID')} /></span> },
+            { key: 'id', header: t('连接 ID'), render: row => <span className="network-copy-value network-connection-id"><code>{row.id}</code><CopyButton value={row.id} label={t('复制连接 ID')} /></span> },
             { key: 'user', header: t('用户 ID'), render: row => row.user_id },
             { key: 'transport', header: t('传输'), render: row => row.transport.toUpperCase() },
             { key: 'actions', header: t('操作'), pin: 'right', render: row => <button type="button" className="button danger" disabled={locked || stale} onClick={() => void close(row.id)}>{t('关闭连接')}</button> },
