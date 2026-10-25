@@ -21,6 +21,7 @@ CI_GROUPS = {
     "web": "web",
     "browser-native-http": "browser",
     "native-c2-live": "native",
+    "native-node-connections": "native",
 }
 
 
@@ -156,6 +157,11 @@ def validate_ci(workflow):
     native_commands = "\n".join(step.get("run", "") for step in jobs["native-c2-live"]["steps"])
     require("python3 scripts/verify-native-c2.py" in native_commands and "go test" not in native_commands,
             "Native integration must retain its real chain without repeating Node component tests")
+    connection_commands = "\n".join(step.get("run", "") for step in jobs["native-node-connections"]["steps"])
+    require("python3 scripts/check-node-component.py" in connection_commands
+            and "node/scripts/tests/node-native-machine/run.py" in connection_commands
+            and '--candidate-core-sha "$CORE_CANDIDATE_SHA"' in connection_commands,
+            "Native connection acceptance must bind the actual Core candidate and fixed Node owner")
 
 
 def main():

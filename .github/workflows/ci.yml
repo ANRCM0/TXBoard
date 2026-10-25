@@ -974,7 +974,7 @@ jobs:
   acceptance:
     name: CI acceptance
     if: ${{ always() }}
-    needs: [changes, static, api, mysql-regression, installation-bootstrap, native-admin-management, native-billing-domain, native-subscription-domain, web, browser-native-http, native-c2-live]
+    needs: [changes, static, api, mysql-regression, installation-bootstrap, native-admin-management, native-billing-domain, native-subscription-domain, web, browser-native-http, native-c2-live, native-node-connections]
     runs-on: ubuntu-latest
     steps:
       - name: Require every selected check to succeed

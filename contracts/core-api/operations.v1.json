@@ -3868,7 +3868,6 @@
         "next": {
           "anyOf": [
             {
-              "type": "string",
               "const": ""
             },
             {
@@ -3881,7 +3880,6 @@
         "connection_id": {
           "anyOf": [
             {
-              "type": "string",
               "const": ""
             },
             {
@@ -25011,7 +25009,6 @@
           "after": {
             "anyOf": [
               {
-                "type": "string",
                 "const": ""
               },
               {

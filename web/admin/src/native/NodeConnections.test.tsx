@@ -74,7 +74,10 @@ it('withdraws connection snapshots after permission loss or session replacement'
   denied = true; await act(async () => { await client.invalidateQueries({ queryKey: ['native-admin', 'node-connections'] }) }); await settle()
   expect(host.textContent).not.toContain(connectionId)
   expect(host.textContent).toContain('已隐藏资源数据')
-  denied = false; await render('new-session'); await click('读取连接列表')
+  denied = false
+  // Real session replacement clears both workflow state and the query cache.
+  act(() => { workflowActions.reset(); client.clear() })
+  await render('new-session'); await click('读取连接列表')
   expect(host.textContent).toContain(connectionId)
   act(() => workflowActions.reset())
   expect(host.textContent).not.toContain(connectionId)
