@@ -45,6 +45,7 @@ describe('ConfirmDialogHost', () => {
     }))
     expect(document.body.textContent).toContain('关联节点将自动解绑')
     expect(action).not.toHaveBeenCalled()
+    expect(document.activeElement?.textContent).toBe('取消')
 
     const confirmButton = Array.from(document.querySelectorAll<HTMLButtonElement>('.modal-footer button'))
       .find(button => button.textContent === '删除')!

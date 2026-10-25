@@ -26,4 +26,43 @@ it('reports a denied clipboard write without claiming success', async () => {
   await act(async () => host.querySelector('button')!.click())
   expect(host.querySelector('[role=status]')?.textContent).toContain('复制失败')
   expect(host.querySelector('button')!.disabled).toBe(false)
+  expect(host.querySelector('.ui-copy-feedback')?.textContent).toContain('复制失败')
+})
+
+it('starts only one clipboard request for repeated activation before React updates', async () => {
+  let resolve!: () => void
+  const writeText = vi.fn(() => new Promise<void>(done => { resolve = done }))
+  vi.stubGlobal('navigator', { clipboard: { writeText } })
+  act(() => root.render(<CopyButton value="complete-value" />))
+  act(() => { host.querySelector('button')!.click(); host.querySelector('button')!.click() })
+  expect(writeText).toHaveBeenCalledTimes(1)
+  expect(host.querySelector('button')!.getAttribute('aria-busy')).toBe('true')
+  await act(async () => resolve())
+  expect(host.querySelector('[role=status]')?.textContent).toBe('已复制')
+})
+
+it('does not let an earlier value claim success or release a newer pending request', async () => {
+  const resolve: Array<() => void> = []
+  const writeText = vi.fn(() => new Promise<void>(done => { resolve.push(done) }))
+  vi.stubGlobal('navigator', { clipboard: { writeText } })
+  act(() => root.render(<CopyButton value="old-account" />))
+  act(() => host.querySelector('button')!.click())
+  act(() => root.render(<CopyButton value="new-account" />))
+  expect(host.querySelector('button')!.disabled).toBe(false)
+  act(() => host.querySelector('button')!.click())
+  await act(async () => resolve[0]())
+  expect(host.querySelector('[role=status]')?.textContent).toBe('')
+  expect(host.querySelector('button')!.disabled).toBe(true)
+  await act(async () => resolve[1]())
+  expect(writeText.mock.calls).toEqual([['old-account'], ['new-account']])
+  expect(host.querySelector('[role=status]')?.textContent).toBe('已复制')
+})
+
+it('clears earlier success feedback when the resource value changes', async () => {
+  vi.stubGlobal('navigator', { clipboard: { writeText: vi.fn().mockResolvedValue(undefined) } })
+  act(() => root.render(<CopyButton value="first" />))
+  await act(async () => host.querySelector('button')!.click())
+  act(() => root.render(<CopyButton value="second" />))
+  expect(host.querySelector('[role=status]')?.textContent).toBe('')
+  expect(host.querySelector('button')!.title).toBe('复制')
 })

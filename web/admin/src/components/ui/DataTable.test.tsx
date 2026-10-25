@@ -84,6 +84,30 @@ it('locks both page and row selection while a populated table refreshes', () => 
   act(() => root.unmount()); host.remove()
 })
 
+it('identifies retained data during refresh and failure, then removes the stale-data description after success', () => {
+  ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
+  const host = document.createElement('div'); document.body.append(host)
+  const root = createRoot(host), onChange = vi.fn(), retry = vi.fn()
+  const columns = [{ key: 'id', header: 'ID', render: (row: number) => row }]
+  const selection = { selected: new Set<string>(), onChange, getKey: String }
+  try {
+    act(() => root.render(<DataTable rows={[42]} columns={columns} loading selection={selection} />))
+    const status = host.querySelector<HTMLElement>('[role="status"]')!
+    expect(status.textContent).toContain('上次加载的数据')
+    expect(host.querySelector('[role="region"]')?.getAttribute('aria-describedby')).toBe(status.id)
+    act(() => root.render(<DataTable rows={[42]} columns={columns} error onRetry={retry} selection={selection} />))
+    expect(host.querySelector('table')?.textContent).toContain('42')
+    expect(host.querySelector('[role="alert"]')?.textContent).toContain('更新失败')
+    expect([...host.querySelectorAll<HTMLInputElement>('input')].every(node => node.disabled)).toBe(true)
+    act(() => host.querySelector<HTMLButtonElement>('.query-feedback button')!.click())
+    expect(retry).toHaveBeenCalledOnce()
+    expect(onChange).not.toHaveBeenCalled()
+    act(() => root.render(<DataTable rows={[43]} columns={columns} selection={selection} />))
+    expect(host.querySelector('[role="region"]')?.hasAttribute('aria-describedby')).toBe(false)
+    expect(host.querySelector('.query-feedback')).toBeNull()
+  } finally { act(() => root.unmount()); host.remove() }
+})
+
 it('renders a single mobile card view with shared selection and switches back to the desktop table', () => {
   ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
   const previous = window.matchMedia

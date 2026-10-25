@@ -13,6 +13,7 @@ import { DirtyNavigationHost } from './DirtyNavigationHost'
 import { adminSection } from '../../navigation/core'
 import { HeaderNavigation } from './HeaderNavigation'
 import { SiteMark } from './SiteMark'
+import { useRouteFocus } from '../../lib/useRouteFocus'
 
 export function AdminLayout() {
   useLocale()
@@ -21,40 +22,10 @@ export function AdminLayout() {
   const { pathname } = useLocation()
   const scrollRef = useRef<HTMLDivElement>(null)
   const mainRef = useRef<HTMLElement>(null)
-  const firstRoute = useRef(true)
-  const [announcement, setAnnouncement] = useState('')
+  const announcement = useRouteFocus(pathname, mainRef, scrollRef)
 
   useEffect(() => {
     setOpen(false)
-    if (scrollRef.current) scrollRef.current.scrollTop = 0
-    window.scrollTo({ top: 0, left: 0, behavior: 'instant' })
-    if (firstRoute.current) { firstRoute.current = false; return }
-    mainRef.current?.focus({ preventScroll: true })
-    setAnnouncement('')
-    let attempts = 0
-    let timer = 0
-    let interacted = false
-    const preserveUserFocus = () => { interacted = true }
-    document.addEventListener('pointerdown', preserveUserFocus, true)
-    document.addEventListener('keydown', preserveUserFocus, true)
-    const focusHeading = () => {
-      const heading = document.querySelector<HTMLElement>('#admin-content h1')
-      if (heading) {
-        heading.tabIndex = -1
-        // A delayed route focus must not dismiss a menu the user has just opened.
-        if (!interacted) heading.focus({ preventScroll: true })
-        setAnnouncement(t('已进入 {page}', { page: heading.textContent?.trim() || t('管理页面') }))
-        return
-      }
-      if (attempts++ < 8) { timer = window.setTimeout(focusHeading, 50); return }
-      setAnnouncement(t('页面已更新'))
-    }
-    timer = window.setTimeout(focusHeading, 80)
-    return () => {
-      window.clearTimeout(timer)
-      document.removeEventListener('pointerdown', preserveUserFocus, true)
-      document.removeEventListener('keydown', preserveUserFocus, true)
-    }
   }, [pathname])
 
   useEffect(() => {
@@ -75,7 +46,7 @@ export function AdminLayout() {
         <header className="admin-topbar">
           <Link className="admin-header-brand" to="/" aria-label={site.name}><SiteMark logo={site.logo} /><strong>{site.name}</strong></Link>
           <HeaderNavigation />
-          <button type="button" className="admin-topbar-menu" aria-label={t("打开导航")} onClick={() => setOpen(true)}>
+          <button type="button" className="admin-topbar-menu" aria-label={t("打开导航")} aria-expanded={open} aria-controls={open ? 'admin-mobile-navigation' : undefined} onClick={() => setOpen(true)}>
             <Menu size={20} />
           </button>
           <TopBar onOpenMenu={() => setOpen(false)} />

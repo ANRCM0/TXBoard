@@ -1,0 +1,32 @@
+.settings-configuration-page .ui-field,
+.appearance-page .ui-field {
+  min-width: 0;
+  scroll-margin-block: 100px 24px;
+}
+
+.settings-configuration-page .ui-field [aria-invalid="true"],
+.appearance-page .ui-field [aria-invalid="true"] {
+  border-color: var(--danger);
+}
+
+.settings-configuration-page .ui-field .field-error,
+.appearance-page .ui-field .field-error {
+  border: 0;
+  border-radius: 0;
+  padding: 0;
+  margin: 0;
+  color: var(--danger);
+  background: transparent;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+.settings-configuration-page .settings-field-grid [aria-invalid="true"],
+.appearance-page .appearance-form input {
+  scroll-margin-block: 100px 24px;
+}
+
+.settings-configuration-page form[aria-busy="true"],
+.appearance-page form[aria-busy="true"] {
+  cursor: progress;
+}

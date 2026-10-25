@@ -1,0 +1,13 @@
+.ui-copy-control .ui-copy-feedback {
+  display: inline-block;
+  max-width: min(24rem, calc(100vw - 6rem));
+  margin-inline-start: 0.4rem;
+  color: var(--danger, #b42318);
+  font-size: 0.75rem;
+  line-height: 1.5;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  vertical-align: middle;
+}
+
+.ui-copy-button[aria-busy="true"] { cursor: progress; }

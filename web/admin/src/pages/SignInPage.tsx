@@ -2,7 +2,7 @@ import { t, useLocale } from '../lib/i18n'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Eye, EyeOff, KeyRound, Mail } from 'lucide-react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { toast } from 'sonner'
@@ -20,6 +20,7 @@ import { Modal } from '../components/ui/Modal'
 import { CopyButton } from '../components/ui/CopyButton'
 import { LanguageSelector } from '../components/ui/LanguageSelector'
 import { SiteAppearanceConsumer, SiteLoginBackground } from '../lib/useSiteAppearance'
+import '../components/layout/experience-navigation.css'
 
 const schema = z.object({
   email: z.string().trim().email('请输入有效邮箱'),
@@ -40,6 +41,8 @@ export function SignInPage() {
     defaultValues: { email: '', password: '' },
   })
   const captchaRef = useRef<CaptchaWidgetHandle | null>(null)
+  const errorRef = useRef<HTMLDivElement>(null)
+  const submitting = useRef(false)
   const captchaConfig = useQuery({
     queryKey: ['admin', 'guest-config'],
     queryFn: fetchGuestConfig,
@@ -67,6 +70,18 @@ export function SignInPage() {
       toast.error(error instanceof CoreAdminApiError && error.status === 401
         ? t('邮箱、密码或验证码未通过验证。') : managementError(error))
     },
+  })
+  const loginError = mutation.isError
+    ? mutation.error instanceof CoreAdminApiError && mutation.error.status === 401
+      ? t('邮箱、密码或验证码未通过验证。') : managementError(mutation.error)
+    : ''
+
+  useEffect(() => { if (mutation.isError) errorRef.current?.focus() }, [mutation.isError])
+
+  const submit = form.handleSubmit(value => {
+    if (submitting.current || !captchaConfig.isSuccess) return
+    submitting.current = true
+    mutation.mutate(value, { onSettled: () => { submitting.current = false } })
   })
 
   return (
@@ -96,7 +111,8 @@ export function SignInPage() {
             <p>{site.description || t('欢迎回来，登录以管理你的站点')}</p>
           </div>
 
-          <form onSubmit={form.handleSubmit(value => mutation.mutate(value))} className="admin-auth-form">
+          <form onSubmit={submit} className="admin-auth-form" aria-busy={mutation.isPending}
+            onChange={() => { if (mutation.isError) mutation.reset() }}>
             <label>
               <span>{t("邮箱")}</span>
               <div className="admin-auth-input"><Mail size={17} aria-hidden="true" />
@@ -107,6 +123,7 @@ export function SignInPage() {
                 autoComplete="email"
                 placeholder="admin@example.com"
                 autoFocus
+                disabled={mutation.isPending}
                 aria-invalid={!!form.formState.errors.email}
                 aria-describedby={form.formState.errors.email ? 'admin-email-error' : undefined}
               />
@@ -122,11 +139,12 @@ export function SignInPage() {
                 aria-label={t("密码")}
                 type={passwordVisible ? 'text' : 'password'}
                 autoComplete="current-password"
+                disabled={mutation.isPending}
                 placeholder={t("请输入密码")}
                 aria-invalid={!!form.formState.errors.password}
                 aria-describedby={form.formState.errors.password ? 'admin-password-error' : undefined}
               />
-              <button type="button" className="admin-password-toggle" aria-label={t(passwordVisible ? '隐藏密码' : '显示密码')} aria-pressed={passwordVisible} onMouseDown={event => event.preventDefault()} onClick={() => setPasswordVisible(value => !value)}>{passwordVisible ? <EyeOff size={16} /> : <Eye size={16} />}</button>
+              <button type="button" disabled={mutation.isPending} className="admin-password-toggle" aria-label={t(passwordVisible ? '隐藏密码' : '显示密码')} aria-pressed={passwordVisible} onMouseDown={event => event.preventDefault()} onClick={() => setPasswordVisible(value => !value)}>{passwordVisible ? <EyeOff size={16} /> : <Eye size={16} />}</button>
               </div>
               {form.formState.errors.password ? <small id="admin-password-error">{t(form.formState.errors.password.message ?? '')}</small> : null}
             </label>
@@ -138,6 +156,7 @@ export function SignInPage() {
             {captchaEnabled ? (
               <CaptchaWidget ref={captchaRef} config={captchaConfig.data ?? null} />
             ) : null}
+            {loginError ? <div ref={errorRef} tabIndex={-1} role="alert" className="admin-auth-request-error">{loginError}</div> : null}
             <button type="submit" className="admin-auth-submit"
               disabled={mutation.isPending || captchaConfig.isPending || captchaConfig.isError}>
               {t(mutation.isPending ? '登录中…' : '登录')}

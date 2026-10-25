@@ -91,7 +91,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
   }
 
   return (
-    <div ref={dialogRef} tabIndex={-1} role={open ? 'dialog' : undefined} aria-modal={open || undefined} aria-label={t("管理导航")} className={`admin-sidebar ${open ? 'is-open' : ''}`}>
+    <div id={open ? 'admin-mobile-navigation' : undefined} ref={dialogRef} tabIndex={-1} role={open ? 'dialog' : undefined} aria-modal={open || undefined} aria-label={t("管理导航")} className={`admin-sidebar ${open ? 'is-open' : ''}`}>
       <div className="admin-sidebar-inner">
         <div className="admin-sidebar-brand">
           <div className="admin-sidebar-brand-main">

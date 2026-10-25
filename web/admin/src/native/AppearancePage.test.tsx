@@ -48,6 +48,22 @@ it('rejects unsafe login image input locally and asks before cancelling valid un
   expect(workflowActions.run).not.toHaveBeenCalled(); expect(host.textContent).toContain('无凭据的 HTTPS')
   await click('取消修改'); expect(document.body.textContent).toContain('放弃外观草稿？'); await click('放弃修改'); expect(field('登录背景地址').value).toBe('')
 })
+it('associates an unsafe background address with its field, focuses it and clears the error after correction', async () => {
+  await render(); await change('登录背景地址', 'https://user:pass@example.test/login.jpg'); await click('保存外观')
+  const input = field('登录背景地址') as HTMLInputElement
+  expect(workflowActions.run).not.toHaveBeenCalled()
+  expect(document.activeElement).toBe(input)
+  expect(input.getAttribute('aria-invalid')).toBe('true')
+  const errorId = input.getAttribute('aria-errormessage')!
+  expect(document.getElementById(errorId)?.textContent).toContain('无凭据的 HTTPS')
+  expect(input.getAttribute('aria-describedby')).toContain('-hint')
+  expect(input.getAttribute('aria-describedby')).toContain('-error')
+  await change('登录背景地址', '/safe/login.jpg')
+  expect(input.hasAttribute('aria-invalid')).toBe(false)
+  expect(input.hasAttribute('aria-errormessage')).toBe(false)
+  expect(host.textContent).not.toContain('背景地址须为')
+  expect(workflowActions.run).not.toHaveBeenCalled()
+})
 it('recovers a retained appearance command with its original input and clears all drafts on current permission loss', async () => {
   const input = { expected_version: version, values: { admin_color_scheme: 'green' } }
   state.workflow = { busy: false, pending: { operation: 'settings.configuration.update', input, key: 'original-key', unknown: true } }
