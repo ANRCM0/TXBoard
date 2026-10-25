@@ -175,3 +175,30 @@ Its compatibility CI checks the supported Core interface and actual delivery,
 so compatible implementation updates can be reviewed and released independently.
 When Core adopts a new renderer implementation, review and version the combined
 Core renderer declaration and source fingerprints along with the Node pin.
+
+
+## Native Node connection management candidate
+
+The node detail page uses three closed Core operations: `network.nodes.connections.list.request`,
+`network.nodes.connections.close`, and `network.nodes.connections.result.get`. The first requires
+`network.nodes.read`, close requires `network.nodes.manage`, and result reads recheck read permission
+and the original requesting administrator. Requests use existing workflow idempotency receipts.
+The Node list remains an instantaneous bounded snapshot, with opaque process-scoped IDs and no
+addresses or credentials. Unknown outcomes require observation; the UI does not automatically
+repeat a close operation.
+
+Core dispatch sends only a cached request ID through Redis and rechecks the live node membership,
+credential and socket before forwarding the original command. The Node delegates to the existing
+Service/kernel/session owner, retaining its cross-reload and foreign-node semantics. Results must
+match the original request and currently dispatched socket; revocation, socket replacement and
+expiry cannot manufacture a successful close. This is an explicit connection command contract,
+not a generic remote command channel.
+
+The dedicated `Native Node connection management` Actions job checks out the exact Core candidate
+and the recorded Node submodule. It runs the private real Workerman/MySQL/Redis/Provider fixture,
+requires the three reviewed operation contracts, and verifies pagination, a foreign-node rejection,
+workflow replay, actual target EOF and continued traffic on the other live streams. The existing
+native activation, membership, token rotation, durable tail replay and unique SQL assertions still
+execute. Its bounded public artifact records source SHAs/trees, assertions and evidence hashes.
+Functional Actions, main integration, Node image/release publication and deployment acceptance
+remain separate records. S3 performance and actual host rollout are not implied by this candidate.

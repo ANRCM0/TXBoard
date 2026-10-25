@@ -228,6 +228,9 @@
     "usage.admin-corrections.list",
     "network.nodes.ordering.get",
     "network.nodes.ordering.replace",
-    "network.machines.overview.get"
+    "network.machines.overview.get",
+    "network.nodes.connections.list.request",
+    "network.nodes.connections.close",
+    "network.nodes.connections.result.get"
   ]
 }

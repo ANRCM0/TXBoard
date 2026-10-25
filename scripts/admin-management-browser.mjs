@@ -264,6 +264,19 @@ try {
   assert.ok(state.calls.some(call => call.operation === 'network.nodes.traffic-history.get'
     && call.input.days === 7 && JSON.stringify(call.input.node_ids) === JSON.stringify([state.node.id])))
   passed('node detail loads its own daily traffic history and switches the range')
+  const connections = page.getByRole('region', { name: '实时连接', exact: true })
+  await connections.getByRole('button', { name: '读取连接列表', exact: true }).click()
+  await connections.getByText(state.connectionId, { exact: true }).waitFor()
+  assert.deepEqual(state.calls.filter(call => call.operation === 'network.nodes.connections.list.request').at(-1).input,
+    { node_id: state.node.id, limit: 50 })
+  await screenshot(page, 'node-connections-desktop')
+  await connections.getByRole('button', { name: '关闭连接', exact: true }).click()
+  await acceptAdminConfirmation(page)
+  await connections.getByText('节点已确认关闭连接，请刷新列表查看当前状态。', { exact: true }).waitFor()
+  assert.deepEqual(state.calls.filter(call => call.operation === 'network.nodes.connections.close').at(-1).input,
+    { node_id: state.node.id, connection_id: state.connectionId })
+  assert.equal(await connections.getByRole('button', { name: '关闭连接', exact: true }).isDisabled(), true)
+  passed('connection management preserves opaque IDs and waits for the matching Node receipt before confirming closure')
   state.denied.add('network.nodes.get')
   await page.getByRole('button', { name: '刷新节点', exact: true }).click()
   await page.getByText('当前账号没有此操作的权限，已隐藏资源数据。', { exact: true }).waitFor()
@@ -344,6 +357,10 @@ try {
     } else if (pathname === '/config/email/templates') {
       await mobile.page.getByRole('button', { name: '编辑源码', exact: true }).click()
       await mobile.page.getByLabel('模板源码', { exact: true }).waitFor()
+    } else if (pathname === '/server/node/9007199254740993') {
+      const panel = mobile.page.getByRole('region', { name: '实时连接', exact: true })
+      await panel.getByRole('button', { name: '读取连接列表', exact: true }).click()
+      await panel.getByText(mobile.state.connectionId, { exact: true }).waitFor()
     } else if (pathname === '/user/traffic-reset') {
       await mobile.page.getByLabel('用户 ID', { exact: true }).fill('12')
       await mobile.page.getByRole('button', { name: '读取当前订阅', exact: true }).click()

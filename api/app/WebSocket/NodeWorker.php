@@ -374,6 +374,12 @@ class NodeWorker
                 return;
             }
         }
+        if ($event === \App\Domains\Network\NativeNodeConnections::REQUEST) {
+            $data = $payload['data'] ?? [];
+            app(\App\Domains\Network\NativeNodeConnections::class)->dispatch($node, $conn,
+                is_array($data) ? ($data['request_id'] ?? null) : null);
+            return;
+        }
         if (!in_array($event, ['sync.config', 'sync.users'], true)) {
             if (!empty($conn->machineId)) $this->synchronizeMachine((int) $conn->machineId);
             Log::warning('[WS] Native node push dropped', ['node_id' => $nodeId, 'failure_code' => 'NATIVE_NODE_PUSH_EVENT_UNSUPPORTED']);

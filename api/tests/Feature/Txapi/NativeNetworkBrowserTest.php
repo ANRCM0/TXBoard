@@ -12,6 +12,39 @@ use Tests\Support\NativeRuntimeTestCase;
 
 final class NativeNetworkBrowserTest extends NativeRuntimeTestCase
 {
+    public function test_connection_browser_operations_keep_original_receipts_and_recheck_permissions(): void
+    {
+        $this->activate();
+        config(['browser.enabled' => true, 'browser.admin_enabled' => true,
+            'browser.origin' => 'https://core.example.test', 'browser.rate_store' => 'array']);
+        admin_setting(['secure_path' => 'native_network']);
+        [, $actor] = app(NativeIdentityService::class)->create('connections-browser@example.test', 'admin-password');
+        $actor->forceFill(['is_admin' => true])->saveOrFail();
+        foreach (['network.nodes.manage', 'network.nodes.read'] as $permission) {
+            DB::table('tx_internal_actor_grant')->insert(['user_id' => $actor->id, 'permission' => $permission, 'created_at' => time()]);
+        }
+        $headers = ['Authorization' => 'Bearer '.$actor->createToken('browser', ['*'])->plainTextToken,
+            'X-Core-Admin-Path' => 'native_network', 'Origin' => 'https://core.example.test'];
+        $invoke = fn (string $op, array $input, ?string $key = null) => $this->postJson(
+            'https://core.example.test/gateway/v1/core/admin/operations/'.$op, ['input' => $input],
+            $headers + ($key ? ['Idempotency-Key' => $key] : []));
+        \Illuminate\Support\Facades\Redis::shouldReceive('publish')->once()->andReturn(1);
+        NodeSyncService::markNodeOnline((int) $this->node->id);
+        $input = ['node_id' => (string) $this->node->id, 'limit' => 50];
+        $key = (string) Str::uuid();
+        $receipt = $invoke('network.nodes.connections.list.request', $input, $key)->assertOk()
+            ->assertJsonPath('data.status', 'pending')->json('data');
+        $invoke('network.nodes.connections.list.request', $input, $key)->assertOk()->assertJsonPath('data.request_id', $receipt['request_id']);
+        $invoke('network.nodes.connections.result.get', ['node_id' => $input['node_id'], 'request_id' => $receipt['request_id']])
+            ->assertOk()->assertJsonPath('data.status', 'pending')->assertHeader('Pragma', 'no-cache');
+        $invoke('network.nodes.connections.close', ['node_id' => $input['node_id'], 'connection_id' => 'raw-counter-1'], (string) Str::uuid())
+            ->assertStatus(422);
+        DB::table('tx_internal_actor_grant')->where('user_id', $actor->id)->delete();
+        $invoke('network.nodes.connections.list.request', $input, $key)->assertForbidden();
+        $invoke('network.nodes.connections.result.get', ['node_id' => $input['node_id'], 'request_id' => $receipt['request_id']])->assertForbidden();
+        $invoke('network.nodes.connections.close', ['node_id' => $input['node_id'], 'connection_id' => str_repeat('a', 32).':1'], (string) Str::uuid())->assertForbidden();
+    }
+
     public function test_machine_observations_keep_exact_bytes_and_do_not_present_stale_load_as_zero(): void
     {
         $owner = new NativeMachineObservations();

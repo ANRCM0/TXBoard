@@ -3793,6 +3793,117 @@
         "high_load"
       ],
       "additionalProperties": false
+    },
+    "node_connection_receipt": {
+      "type": "object",
+      "properties": {
+        "request_id": {
+          "type": "string",
+          "pattern": "^nco_[a-f0-9]{32}$",
+          "maxLength": 36
+        },
+        "node_id": {
+          "$ref": "#/definitions/id"
+        },
+        "action": {
+          "type": "string",
+          "enum": [
+            "list",
+            "close"
+          ]
+        },
+        "deadline": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "pending",
+            "complete",
+            "closed",
+            "not_found",
+            "invalid",
+            "expired",
+            "unavailable",
+            "unknown"
+          ]
+        },
+        "connections": {
+          "type": "array",
+          "maxItems": 100,
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{32}:[1-9][0-9]{0,19}$",
+                "maxLength": 53
+              },
+              "user_id": {
+                "$ref": "#/definitions/id"
+              },
+              "transport": {
+                "type": "string",
+                "enum": [
+                  "tcp",
+                  "udp"
+                ]
+              }
+            },
+            "required": [
+              "id",
+              "user_id",
+              "transport"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "total": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1000000000
+        },
+        "next": {
+          "anyOf": [
+            {
+              "type": "string",
+              "const": ""
+            },
+            {
+              "type": "string",
+              "pattern": "^[a-f0-9]{32}:[1-9][0-9]{0,19}$",
+              "maxLength": 53
+            }
+          ]
+        },
+        "connection_id": {
+          "anyOf": [
+            {
+              "type": "string",
+              "const": ""
+            },
+            {
+              "type": "string",
+              "pattern": "^[a-f0-9]{32}:[1-9][0-9]{0,19}$",
+              "maxLength": 53
+            }
+          ]
+        }
+      },
+      "required": [
+        "request_id",
+        "node_id",
+        "action",
+        "deadline",
+        "status",
+        "connections",
+        "total",
+        "next",
+        "connection_id"
+      ],
+      "additionalProperties": false
     }
   },
   "operations": {
@@ -24881,6 +24992,111 @@
         "IDEMPOTENCY_CONFLICT",
         "IDEMPOTENCY_IN_PROGRESS"
       ]
+    },
+    "network.nodes.connections.list.request": {
+      "version": 1,
+      "domains": [
+        "admin"
+      ],
+      "actor": "admin",
+      "permission": "network.nodes.read",
+      "idempotency": "workflow",
+      "consistency": "current-owner-view",
+      "input": {
+        "type": "object",
+        "properties": {
+          "node_id": {
+            "$ref": "#/definitions/id"
+          },
+          "after": {
+            "anyOf": [
+              {
+                "type": "string",
+                "const": ""
+              },
+              {
+                "type": "string",
+                "pattern": "^[a-f0-9]{32}:[1-9][0-9]{0,19}$",
+                "maxLength": 53
+              }
+            ]
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100
+          }
+        },
+        "required": [
+          "node_id"
+        ],
+        "additionalProperties": false
+      },
+      "output": {
+        "$ref": "#/definitions/node_connection_receipt"
+      }
+    },
+    "network.nodes.connections.close": {
+      "version": 1,
+      "domains": [
+        "admin"
+      ],
+      "actor": "admin",
+      "permission": "network.nodes.manage",
+      "idempotency": "workflow",
+      "consistency": "current-owner-view",
+      "input": {
+        "type": "object",
+        "properties": {
+          "node_id": {
+            "$ref": "#/definitions/id"
+          },
+          "connection_id": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{32}:[1-9][0-9]{0,19}$",
+            "maxLength": 53
+          }
+        },
+        "required": [
+          "node_id",
+          "connection_id"
+        ],
+        "additionalProperties": false
+      },
+      "output": {
+        "$ref": "#/definitions/node_connection_receipt"
+      }
+    },
+    "network.nodes.connections.result.get": {
+      "version": 1,
+      "domains": [
+        "admin"
+      ],
+      "actor": "admin",
+      "permission": "network.nodes.read",
+      "idempotency": "read",
+      "consistency": "current-owner-view",
+      "input": {
+        "type": "object",
+        "properties": {
+          "node_id": {
+            "$ref": "#/definitions/id"
+          },
+          "request_id": {
+            "type": "string",
+            "pattern": "^nco_[a-f0-9]{32}$",
+            "maxLength": 36
+          }
+        },
+        "required": [
+          "node_id",
+          "request_id"
+        ],
+        "additionalProperties": false
+      },
+      "output": {
+        "$ref": "#/definitions/node_connection_receipt"
+      }
     }
   },
   "surfaces": {
@@ -25053,7 +25269,10 @@
       "usage.admin-corrections.list",
       "network.nodes.ordering.get",
       "network.nodes.ordering.replace",
-      "network.machines.overview.get"
+      "network.machines.overview.get",
+      "network.nodes.connections.list.request",
+      "network.nodes.connections.close",
+      "network.nodes.connections.result.get"
     ],
     "user": [
       "support.tickets.list",

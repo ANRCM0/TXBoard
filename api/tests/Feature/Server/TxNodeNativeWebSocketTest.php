@@ -65,6 +65,78 @@ class TxNodeNativeWebSocketTest extends TestCase
         return new WsRequest($headers."\r\n");
     }
 
+    public function test_connection_commands_use_cached_payloads_and_current_scoped_socket_results(): void
+    {
+        Redis::shouldReceive('publish')->andReturn(1);
+        $owner = app(\App\Domains\Network\NativeNodeConnections::class);
+        foreach (['standalone', 'machine', 'bound-standalone'] as $mode) {
+            $machineMode = $mode === 'machine';
+            $machine = $mode !== 'standalone' ? ServerMachine::create(['name' => 'connections', 'token' => 'connections-machine', 'is_active' => true]) : null;
+            $node = $this->node(['machine_id' => $machine?->id]);
+            $sent = [];
+            $conn = $this->connection($sent);
+            $ws = app(NativeNodeWebSocket::class);
+            try {
+                $ws->connect($conn, $this->upgrade($machineMode ? null : $node->id,
+                    $machineMode ? 'connections-machine' : 'native-ws-test-token', $machineMode ? $machine->id : null));
+                $receipt = $owner->request($node, 41, 'list', ['limit' => 1]);
+                $this->assertSame('pending', $receipt['status']);
+                $worker = new \App\WebSocket\NodeWorker('127.0.0.1', 8077);
+                $dispatch = new \ReflectionMethod($worker, 'dispatchRedisPush');
+                $payload = ['node_id' => (int) $node->id, 'event' => $owner::REQUEST,
+                    'data' => ['request_id' => $receipt['request_id'], 'action' => 'close', 'connection_id' => str_repeat('f', 32).':99']];
+                $dispatch->invoke($worker, $payload);
+                $commands = array_values(array_filter($sent, fn ($frame) => $frame['event'] === $owner::REQUEST));
+                $this->assertCount(1, $commands);
+                $this->assertSame('list', $commands[0]['data']['action']);
+                $this->assertArrayNotHasKey('connection_id', $commands[0]['data']);
+                $dispatch->invoke($worker, $payload);
+                $this->assertCount(1, array_filter($sent, fn ($frame) => $frame['event'] === $owner::REQUEST));
+                $result = ['node_id' => (int) $node->id, 'request_id' => $receipt['request_id'], 'action' => 'list', 'status' => 'complete',
+                    'page' => ['connections' => [['id' => str_repeat('a', 32).':1', 'user_id' => 9007199254740993, 'transport' => 'tcp']], 'total' => 1]];
+                $bad = $result;
+                $bad['page']['connections'][0]['address'] = 'must-not-project';
+                $ws->message($conn, NativeNodeFrame::encode($owner::RESULT, $bad, 'bad-page'));
+                $this->assertSame('INVALID_FRAME', end($sent)['data']['code']);
+                $this->assertSame('pending', $owner->read($node, 41, $receipt['request_id'])['status']);
+                $ws->message($conn, NativeNodeFrame::encode($owner::RESULT, $result, 'list-result'));
+                $this->assertSame('ops.node.connections.ack', end($sent)['event']);
+                $view = $owner->read($node, 41, $receipt['request_id']);
+                $this->assertSame('complete', $view['status']);
+                $this->assertSame('9007199254740993', $view['connections'][0]['user_id']);
+                $this->assertNull($owner->read($node, 42, $receipt['request_id']));
+                $ws->message($conn, NativeNodeFrame::encode($owner::RESULT, $result, 'duplicate-result'));
+                $this->assertSame('ops.node.connections.ack', end($sent)['event']);
+                $result['page']['total'] = 99;
+                $ws->message($conn, NativeNodeFrame::encode($owner::RESULT, $result, 'different-result'));
+                $this->assertSame('INVALID_FRAME', end($sent)['data']['code']);
+                $this->assertSame(1, $owner->read($node, 41, $receipt['request_id'])['total']);
+                $close = $owner->request($node, 41, 'close', ['connection_id' => $view['connections'][0]['id']]);
+                $dispatch->invoke($worker, ['node_id' => (int) $node->id, 'event' => $owner::REQUEST, 'data' => ['request_id' => $close['request_id']]]);
+                // Replacing a socket cannot acknowledge its predecessor's request.
+                $epoch = $conn->txnodeConnectionEpoch;
+                $conn->txnodeConnectionEpoch = str_repeat('c', 32);
+                $closed = ['node_id' => (int) $node->id, 'request_id' => $close['request_id'], 'action' => 'close', 'status' => 'closed'];
+                $ws->message($conn, NativeNodeFrame::encode($owner::RESULT, $closed, 'wrong-session'));
+                $this->assertSame('INVALID_FRAME', end($sent)['data']['code']);
+                $conn->txnodeConnectionEpoch = $epoch;
+                $this->travel(16)->seconds();
+                $this->assertSame('unknown', $owner->read($node, 41, $close['request_id'])['status']);
+                $this->travelBack();
+                if ($machineMode) $machine->update(['token' => 'rotated-connections-token']);
+                else admin_setting(['server_token' => 'rotated-node-token']);
+                $this->assertSame([], $owner->read($node, 41, $receipt['request_id'])['connections']);
+                $ws->message($conn, NativeNodeFrame::encode($owner::RESULT, $closed, 'revoked-result'));
+                $this->assertSame('UNAUTHORIZED', end($sent)['data']['code']);
+            } finally {
+                $this->travelBack();
+                NodeRegistry::remove((int) $node->id, $conn);
+                if ($machine) NodeRegistry::removeMachine((int) $machine->id, $conn);
+                admin_setting(['server_token' => 'native-ws-test-token']);
+            }
+        }
+    }
+
     public function test_worker_rejects_old_upgrade_and_unversioned_frames(): void
     {
         $worker = new \App\WebSocket\NodeWorker('127.0.0.1', 8077);
