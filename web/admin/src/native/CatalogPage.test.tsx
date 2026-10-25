@@ -90,7 +90,9 @@ it('loads authoritative full current terms instead of reconstructing a plan from
   expect(field('catalog-price-quarterly').value).toBe('0')
   expect(field('catalog-capacity-choice').value).toBe('')
   expect(button('发布完整条款').disabled).toBe(true)
-  expect(document.querySelectorAll('b').length).toBe(0)
+  // Required markers are native UI; the supplied plan markup must remain text.
+  expect(document.querySelectorAll('b:not(.ui-required)').length).toBe(0)
+  expect([...document.querySelectorAll('.ui-required')].every(marker => marker.textContent?.trim() === '*')).toBe(true)
 })
 
 it('publishes a complete observed revision with exact minor strings, all periods and preserved null/zero limits', async () => {
