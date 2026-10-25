@@ -26,7 +26,14 @@ final class AuditLogController
 
         $query = AdminAuditLog::query()->with('admin:id,email');
         if (!empty($params['action'])) {
-            $query->where('action', $params['action']);
+            // Historical action names can embed a rotated administrator path.
+            // Filtering them would disclose it through pagination counts.
+            if (!preg_match('/\A[A-Za-z0-9_.-]+\z/D', $params['action'])
+                || AdminAuditSanitizer::safeAction($params['action'], '') === '[REDACTED]') {
+                $query->whereRaw('1 = 0');
+            } else {
+                $query->where('action', $params['action']);
+            }
         }
         if (!empty($params['admin_id'])) {
             $query->where('admin_id', (int) $params['admin_id']);
@@ -34,8 +41,11 @@ final class AuditLogController
         if (!empty($params['keyword'])) {
             $term = $params['keyword'];
             $query->where(function ($q) use ($term) {
-                $q->where('uri', 'like', '%' . $term . '%')
-                    ->orWhere('request_data', 'like', '%' . $term . '%');
+                // Search only public metadata; redacting the returned payload
+                // cannot protect secrets used in a WHERE/count predicate.
+                $q->where('method', 'like', '%' . $term . '%')
+                    ->orWhere('ip', 'like', '%' . $term . '%')
+                    ->orWhereHas('admin', static fn ($admin) => $admin->where('email', 'like', '%' . $term . '%'));
             });
         }
 

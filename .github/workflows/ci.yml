@@ -605,6 +605,7 @@ jobs:
               tests/Feature/Txapi/TxapiNativeInternalApiTest.php
               tests/Feature/Txapi/TxapiAdminResourceReadsTest.php
               tests/Feature/Txapi/TxapiUnifiedAdminManagementTest.php
+              tests/Feature/Txapi/TxapiAdminAuditTest.php
           - shard: content-and-support
             run_usage_concurrency: false
             test_files: >-

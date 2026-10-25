@@ -119,6 +119,37 @@ class TxapiAdminAuditTest extends TestCase
         $this->assertStringContainsString('[REDACTED]', (string) $audit->request_data);
     }
 
+    public function test_search_counts_cannot_probe_redacted_historical_values(): void
+    {
+        admin_setting(['secure_path' => 'audit-search-current']);
+        $admin = $this->user('audit-search-reader@example.test', true);
+        $action = 'txapi_admin_rotated-private-entry_config.save';
+        AdminAuditLog::create([
+            'admin_id' => $admin->id, 'action' => $action, 'method' => 'PATCH',
+            'uri' => '/txapi/admin/rotated-private-entry/config/save?token=historical-query-secret',
+            'request_data' => json_encode(['password' => 'historical-password', 'remark' => 'historical-body']),
+            'ip' => '192.0.2.42', 'created_at' => time(), 'updated_at' => time(),
+        ]);
+        Sanctum::actingAs($admin);
+        $url = '/txapi/admin/audit-search-current/audit-logs';
+        foreach (['historical-password', 'historical-query-secret', 'rotated-private-entry', 'historical-body'] as $keyword) {
+            $this->getJson($url.'?'.http_build_query(['keyword' => $keyword]))
+                ->assertOk()->assertJsonPath('meta.total', 0)->assertJsonPath('data', []);
+        }
+        // Case/accent-insensitive SQL collations must not restore the action oracle.
+        foreach ([$action, strtoupper($action), str_replace('txapi_admin_', 'txápì_ádmìn_', $action),
+            'api_tx_rotated-private-entry_config.save'] as $unsafe) {
+            $this->getJson($url.'?'.http_build_query(['action' => $unsafe]))
+                ->assertOk()->assertJsonPath('meta.total', 0)->assertJsonPath('data', []);
+        }
+        foreach (['PATCH', '192.0.2.42', $admin->email] as $keyword) {
+            $this->getJson($url.'?'.http_build_query(['keyword' => $keyword]))
+                ->assertOk()->assertJsonPath('meta.total', 1)->assertJsonPath('data.0.action', 'config.save');
+        }
+        $this->getJson($url.'?'.http_build_query(['keyword' => 'PATCH', 'admin_id' => $admin->id + 1]))
+            ->assertOk()->assertJsonPath('meta.total', 0);
+    }
+
     private function user(string $email, bool $admin): User
     {
         return User::create([

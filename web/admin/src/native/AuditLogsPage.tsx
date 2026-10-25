@@ -39,11 +39,11 @@ export function AuditLogsPage() {
     <PageHeader title={t("管理审计")} description={t("追踪管理员的操作与访问记录")} action={<button className="button" disabled={!session || query.isFetching} onClick={() => void query.refetch()}><RefreshCw size={15} />{t("刷新")}</button>} />
     <ReadOnlyNotice title={t("审计记录只读")}>{t("记录用于事后核对 · 不提供修改或删除入口 · 请求内容与来源信息来自 Core 审计存储")}</ReadOnlyNotice>
     {error ? <p role="alert">{t(error)}</p> : null}
-    <section className="list-card"><div className="observation-card-heading"><div><h2>{t("筛选记录")}</h2><p>{t("按操作、管理员或请求内容定位")}</p></div></div>
+    <section className="list-card"><div className="observation-card-heading"><div><h2>{t("筛选记录")}</h2><p>{t("按操作、管理员或来源信息定位")}</p></div></div>
       <form className="native-filters observation-audit-filters" onSubmit={event => { event.preventDefault(); if (draft.admin_id && !validId(draft.admin_id)) { setError('管理员 ID 必须是有效的十进制字符串。'); return } setError(''); setPage(1); setFilters({ ...draft }) }}>
         <label>{t("操作")}<input placeholder={t("操作名称")} maxLength={80} value={draft.action} onChange={event => setDraft({ ...draft, action: event.target.value })} /></label>
         <label>{t("管理员 ID")}<input placeholder={t("输入管理员 ID")} inputMode="numeric" value={draft.admin_id} onChange={event => setDraft({ ...draft, admin_id: event.target.value })} /></label>
-        <label>{t("关键字")}<input placeholder={t("搜索请求内容")} maxLength={120} value={draft.keyword} onChange={event => setDraft({ ...draft, keyword: event.target.value })} /></label>
+        <label>{t("关键字")}<input placeholder={t("搜索管理员邮箱、方法或 IP")} maxLength={120} value={draft.keyword} onChange={event => setDraft({ ...draft, keyword: event.target.value })} /></label>
         <button className="button" disabled={!session}><Search size={15} />{t("查询")}</button><button type="button" className="button observation-reset" onClick={() => { setDraft(blankFilters()); setFilters(blankFilters()); setPage(1); setError('') }}><RotateCcw size={15} />{t("重置")}</button>
       </form>
       {filters.action || filters.admin_id || filters.keyword ? <div className="observation-filter-summary" aria-label={t("已应用筛选")}>{filters.action ? <span>{t('操作：{action}', { action: filters.action })}</span> : null}{filters.admin_id ? <span>{t('管理员：#{id}', { id: filters.admin_id })}</span> : null}{filters.keyword ? <span>{t('关键字：{keyword}', { keyword: filters.keyword })}</span> : null}</div> : null}
