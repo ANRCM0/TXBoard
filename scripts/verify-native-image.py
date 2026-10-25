@@ -188,6 +188,7 @@ def ingress_probe_observation(before, after, ttl_millis, elapsed_millis):
 
 def verify_browser_ingress(origin, auth, backend):
     """Exercise the built image's public Caddy listener, without a Gateway process."""
+    probe_started = time.monotonic_ns()
     def request(path, body=None, headers=None, expected=200):
         supplied = {'Accept': 'application/json', **(headers or {})}
         data = None if body is None else json.dumps(body).encode()
@@ -237,6 +238,8 @@ def verify_browser_ingress(origin, auth, backend):
                                  '-n', '1', '--raw', '--scan', '--pattern', '*core-browser:ingress:*')
         return {key for key in output.splitlines() if key}
     buckets = ingress_buckets()
+    print(json.dumps({'browser_ingress_initial_observation': {
+        'buckets':len(buckets), 'elapsed_millis':round((time.monotonic_ns()-probe_started)/1000000, 3)}}), flush=True)
     require(len(buckets) == 1, 'Image fixture must have one socket ingress budget before XFF rotation')
     ttl_requested = time.monotonic_ns()
     ttl = backend.compose('exec', '-T', 'txboard', 'redis-cli', '-s', '/data/redis.sock',
