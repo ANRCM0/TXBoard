@@ -27,6 +27,7 @@ import uuid
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.dont_write_bytecode = True
+SCHEDULER_OBSERVATIONS = []
 
 
 def require(value, message):
@@ -119,7 +120,9 @@ def verify_scheduler(backend, exercise_restart=False):
         backend.compose('exec', '-T', 'txboard', *control, 'start', target)
 
     commands = ['core:subscriptions-tick', 'check:order', 'core:native-work', 'core:module-work']
+    started = time.monotonic()
     deadline = time.monotonic() + 100
+    output = ''
     while time.monotonic() < deadline:
         output = run(['docker', 'logs', '--since', since, container])
         output = re.sub(r'\x1b\[[0-9;]*[A-Za-z]', '', output)
@@ -128,6 +131,20 @@ def verify_scheduler(backend, exercise_restart=False):
             break
         time.sleep(2)
     else:
+        # Keep closed task labels and counters; container logs may contain secrets.
+        inspected = json.loads(backend.run(['inspect', '--type', 'container', container]))[0]
+        processes = run(['docker', 'top', container, '-eo', 'pid,args']).splitlines()
+        observation = {'exercise_restart': exercise_restart, 'elapsed_seconds': round(time.monotonic()-started, 3),
+                       'container_oom_killed': inspected['State'].get('OOMKilled') is True,
+                       'container_memory_bytes': inspected['HostConfig']['Memory'],
+                       'schedule_workers': sum('artisan schedule:work' in line for line in processes),
+                       'schedule_runs': sum('artisan schedule:run' in line for line in processes),
+                       'commands': {command: {'started': bool(re.search(r'Running \[[^\r\n]*'+re.escape(command), output)),
+                                              'done': bool(re.search(r'Running \[[^\r\n]*'+re.escape(command)+r'[^\r\n]*\bDONE\b', output)),
+                                              'failed': bool(re.search(r'Running \[[^\r\n]*'+re.escape(command)+r'[^\r\n]*\bFAIL\b', output))}
+                                    for command in commands}}
+        SCHEDULER_OBSERVATIONS.append(observation)
+        print(json.dumps({'scheduler_diagnostic': observation}), flush=True)
         raise RuntimeError('Supervised scheduler did not complete all four native tasks within 100 seconds')
     backend.compose('exec', '-T', 'txboard', 'php', '/opt/txboard/healthcheck.php')
     return {'single_supervised_worker': True, 'root_only_control_socket': True,
@@ -535,7 +552,7 @@ def main():
                         r'#\d+ /www/(app/[A-Za-z0-9_./]+\.php)\((\d+)\): ([A-Za-z0-9_\\]+)(?:->|::)([A-Za-z0-9_]+)\(',
                         application_log.read_text(errors='replace')[-1048576:])[-12:]])
             diagnostic = {"schema": "modular-native-image-proof/v1", "status": "failed", "stage": stage,
-                          "error_codes": codes, "application_frames": frames[-12:]}
+                          "error_codes": codes, "application_frames": frames[-12:], "scheduler": SCHEDULER_OBSERVATIONS}
             args.output.parent.mkdir(parents=True, exist_ok=True)
             write(args.output, diagnostic)
             args.output.chmod(0o644)
