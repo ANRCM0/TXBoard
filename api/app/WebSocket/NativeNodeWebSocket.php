@@ -121,8 +121,8 @@ final class NativeNodeWebSocket
             // machine membership / server-token state, not a client-supplied ID.
             $node = $this->scopedNode($conn, $frame['data']);
             if ($event === NativeNodeConnections::RESULT) {
-                app(NativeNodeConnections::class)->accept($node, $conn, $frame['data']);
-                $this->send($conn, 'ops.node.connections.ack', ['accepted' => true], $requestId);
+                $accepted = app(NativeNodeConnections::class)->accept($node, $conn, $frame['data']);
+                $this->send($conn, 'ops.node.connections.ack', ['accepted' => $accepted], $requestId);
                 return;
             }
             if ($event === 'sync.request') {

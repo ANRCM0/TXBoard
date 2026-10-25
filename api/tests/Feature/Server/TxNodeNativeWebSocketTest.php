@@ -122,6 +122,15 @@ class TxNodeNativeWebSocketTest extends TestCase
                 $conn->txnodeConnectionEpoch = $epoch;
                 $this->travel(16)->seconds();
                 $this->assertSame('unknown', $owner->read($node, 41, $close['request_id'])['status']);
+                $ws->message($conn, NativeNodeFrame::encode($owner::RESULT, $closed, 'late-result'));
+                $this->assertSame('ops.node.connections.ack', end($sent)['event']);
+                $this->assertFalse(end($sent)['data']['accepted']);
+                $this->assertSame('late-result', end($sent)['request_id']);
+                $this->assertSame('unknown', $owner->read($node, 41, $close['request_id'])['status']);
+                $ws->message($conn, NativeNodeFrame::encode('heartbeat.ping', [], 'after-late-result'));
+                $this->assertSame('heartbeat.ack', end($sent)['event']);
+                $this->assertSame($conn, NodeRegistry::get((int) $node->id));
+                $conn->shouldNotHaveReceived('close');
                 $this->travelBack();
                 if ($machineMode) $machine->update(['token' => 'rotated-connections-token']);
                 else admin_setting(['server_token' => 'rotated-node-token']);

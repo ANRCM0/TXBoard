@@ -108,13 +108,13 @@ final class NativeNodeConnections
     }
 
     /** Called only after the existing WS path rechecks credentials and Machine membership. */
-    public function accept(Server $node, TcpConnection $conn, array $data): void
+    public function accept(Server $node, TcpConnection $conn, array $data): bool
     {
         $id = $data['request_id'] ?? null;
         if (!is_string($id) || !preg_match('/^nco_[a-f0-9]{32}$/D', $id)) throw new \InvalidArgumentException('INVALID_FRAME');
         $entry = Cache::get(self::key($id));
         if (!is_array($entry) || $entry['node_id'] !== (int) $node->id || ($data['node_id'] ?? null) !== (int) $node->id
-            || $entry['command']['deadline'] <= now()->getTimestamp() || $entry['socket_epoch'] === null
+            || $entry['socket_epoch'] === null
             || $entry['socket_epoch'] !== ($conn->txnodeConnectionEpoch ?? null)
             || NodeRegistry::get((int) $node->id) !== $conn || $this->scope($node) !== $entry['scope']
             || ($data['action'] ?? null) !== $entry['command']['action']) throw new \InvalidArgumentException('INVALID_FRAME');
@@ -129,15 +129,19 @@ final class NativeNodeConnections
         } elseif (array_key_exists('page', $data)) {
             throw new \InvalidArgumentException('INVALID_FRAME');
         }
+        // A valid late reply must retain unknown outcome without emitting a
+        // generic error frame that makes the Node reconnect its shared socket.
+        if ($entry['command']['deadline'] <= now()->getTimestamp()) return false;
         if ($entry['status'] !== 'pending') {
             if ($entry['status'] !== $status || $entry['page'] !== $page) throw new \InvalidArgumentException('INVALID_FRAME');
-            return;
+            return true;
         }
         // First valid result wins. A duplicate cannot replace a terminal receipt.
-        if (!Cache::add(self::key($id).':completed', true, self::TTL)) return;
+        if (!Cache::add(self::key($id).':completed', true, self::TTL)) return false;
         $entry['status'] = $status;
         $entry['page'] = $page;
         Cache::put(self::key($id), $entry, self::TTL);
+        return true;
     }
 
     private function validatePage(mixed $page, int $limit): array
