@@ -175,6 +175,17 @@ def verify_backup_assets(native, installation, assets):
             'live_assets_preserved': True}
 
 
+def ingress_probe_observation(before, after, ttl_millis, elapsed_millis):
+    added, removed = after-before, before-after
+    valid_ttl = ttl_millis == -2 or 0 <= ttl_millis <= 60000
+    expiry_consistent = not removed or ttl_millis == -2 or elapsed_millis >= ttl_millis
+    return {'initial_buckets': len(before), 'final_buckets': len(after),
+            'added_buckets': len(added), 'removed_buckets': len(removed),
+            'initial_ttl_millis': ttl_millis, 'elapsed_millis': round(elapsed_millis, 3),
+            'expiry_consistent': expiry_consistent,
+            'accepted': len(before) == 1 and not added and valid_ttl and expiry_consistent}
+
+
 def verify_browser_ingress(origin, auth, backend):
     """Exercise the built image's public Caddy listener, without a Gateway process."""
     def request(path, body=None, headers=None, expected=200):
@@ -222,19 +233,27 @@ def verify_browser_ingress(origin, auth, backend):
     # Default Caddy trust is loopback only; the Docker bridge peer is untrusted.
     # Rotating XFF must hit the existing socket budget.
     def ingress_buckets():
-        return set(backend.compose('exec', '-T', 'txboard', 'redis-cli', '-s', '/data/redis.sock',
-                                  '-n', '1', '--raw', '--scan', '--pattern', '*core-browser:ingress:*').splitlines())
+        output = backend.compose('exec', '-T', 'txboard', 'redis-cli', '-s', '/data/redis.sock',
+                                 '-n', '1', '--raw', '--scan', '--pattern', '*core-browser:ingress:*')
+        return {key for key in output.splitlines() if key}
     buckets = ingress_buckets()
     require(len(buckets) == 1, 'Image fixture must have one socket ingress budget before XFF rotation')
+    ttl_requested = time.monotonic_ns()
+    ttl = backend.compose('exec', '-T', 'txboard', 'redis-cli', '-s', '/data/redis.sock',
+                          '-n', '1', '--raw', 'PTTL', next(iter(buckets))).strip()
+    require(re.fullmatch(r'-?[0-9]{1,9}', ttl) is not None, 'Actual ingress budget TTL unavailable')
     for forwarded in ['198.51.100.7', '203.0.113.9, 198.51.100.8']:
         request('/gateway/v1/bootstrap', headers={'X-Forwarded-For': forwarded,
                 'X-Core-Browser-Client-IP': '203.0.113.10'})
-    require(ingress_buckets() == buckets, 'Untrusted XFF split the actual image ingress budget')
+    after = ingress_buckets()
+    observation = ingress_probe_observation(buckets, after, int(ttl), (time.monotonic_ns()-ttl_requested)/1000000)
+    print(json.dumps({'browser_ingress_diagnostic': observation}), flush=True)
+    require(observation['accepted'], 'Untrusted XFF changed the actual image ingress budget outside its original TTL')
     return {'public_caddy_listener': True, 'same_process_bootstrap_and_discovery': True,
             'bearer_admin_read': True, 'current_admin_path_required': True, 'no_session_cookie': True,
             'cookie_only_rejected': True, 'cross_origin_and_host_rejected': True,
             'service_header_rejected': True, 'caddy_overwrites_client_ip_header': True,
-            'untrusted_xff_cannot_split_ingress_budget': True}
+            'untrusted_xff_cannot_split_ingress_budget': True, 'ingress_budget_observation': observation}
 
 
 def purchase_diagnostic(installation, email, offer_id, key):
